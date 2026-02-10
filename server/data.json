@@ -1,0 +1,54 @@
+{
+  "cars": [
+    {
+      "id": "mlarjt6czn7rpc4lwws",
+      "brand": "Авто",
+      "model": "BC 3946 TC",
+      "year": null,
+      "mileage": 66158,
+      "plate": "BC 3946 TC",
+      "color": "",
+      "createdAt": "2026-02-06T10:49:34.837Z"
+    },
+    {
+      "id": "mlawcikc1pguw03bp8f",
+      "brand": "Авто",
+      "model": "ВС 1821 ТО",
+      "year": null,
+      "mileage": 65004,
+      "plate": "ВС 1821 ТО",
+      "color": "",
+      "createdAt": "2026-02-06T13:03:52.572Z"
+    }
+  ],
+  "fuel": [
+    {
+      "id": "mlarjt6nr3eb9doshfg",
+      "carId": "mlarjt6czn7rpc4lwws",
+      "date": "2026-02-06",
+      "liters": 50,
+      "pricePerLiter": 63.99,
+      "mileage": 66158,
+      "station": "",
+      "fullTank": false,
+      "consumption": 0,
+      "source": "telegram",
+      "createdAt": "2026-02-06T10:49:34.847Z"
+    },
+    {
+      "id": "mlawcikfuwckkjftmwf",
+      "carId": "mlawcikc1pguw03bp8f",
+      "date": "2026-02-06",
+      "liters": 40,
+      "pricePerLiter": 62.99,
+      "mileage": 65004,
+      "station": "",
+      "fullTank": false,
+      "consumption": 0,
+      "source": "telegram",
+      "createdAt": "2026-02-06T13:03:52.575Z"
+    }
+  ],
+  "expenses": [],
+  "reminders": []
+}

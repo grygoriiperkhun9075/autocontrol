@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="АвтоКонтроль - додаток для обліку автомобілів, заправок, пробігу та витрат">
+    <title>АвтоКонтроль - Контроль автомобілів</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🚗</span>
+                    <span class="logo-text">АвтоКонтроль</span>
+                </div>
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <span></span>
+                </button>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-section="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">Головна</span>
+                </button>
+                <button class="nav-item" data-section="cars">
+                    <span class="nav-icon">🚗</span>
+                    <span class="nav-text">Автомобілі</span>
+                </button>
+                <button class="nav-item" data-section="fuel">
+                    <span class="nav-icon">⛽</span>
+                    <span class="nav-text">Заправки</span>
+                </button>
+                <button class="nav-item" data-section="expenses">
+                    <span class="nav-icon">💰</span>
+                    <span class="nav-text">Витрати</span>
+                </button>
+                <button class="nav-item" data-section="reminders">
+                    <span class="nav-icon">🔔</span>
+                    <span class="nav-text">Нагадування</span>
+                </button>
+                <button class="nav-item" data-section="statistics">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-text">Статистика</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="export-btn" id="syncBtn">
+                    <span class="nav-icon">🔄</span>
+                    <span class="nav-text">Синхронізувати</span>
+                </button>
+                <button class="export-btn" id="exportBtn">
+                    <span class="nav-icon">📤</span>
+                    <span class="nav-text">Експорт даних</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+                <h1 class="page-title" id="pageTitle">Головна</h1>
+                <div class="header-filters">
+                    <div class="car-selector">
+                        <select id="currentCarSelect">
+                            <option value="">Усі автомобілі</option>
+                        </select>
+                    </div>
+                    <div class="period-selector">
+                        <select id="currentPeriodSelect">
+                            <option value="all">За весь час</option>
+                            <option value="year">За рік</option>
+                            <option value="month">За місяць</option>
+                            <option value="week">За тиждень</option>
+                        </select>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Section -->
+            <section class="content-section active" id="section-dashboard">
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🚗</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalCars">0</span>
+                            <span class="stat-label">Автомобілів</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⛽</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="avgConsumption">0</span>
+                            <span class="stat-label">Л/100км (середнє)</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📏</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalMileage">0</span>
+                            <span class="stat-label">Загальний пробіг (км)</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalExpenses">0</span>
+                            <span class="stat-label">Витрати (грн)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Витрата пального по місяцях</h3>
+                        <canvas id="fuelChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Витрати по категоріях</h3>
+                        <canvas id="expensesChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="reminders-preview">
+                    <h3>🔔 Найближчі нагадування</h3>
+                    <div class="reminders-list" id="upcomingReminders">
+                        <p class="empty-message">Немає активних нагадувань</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cars Section -->
+            <section class="content-section" id="section-cars">
+                <div class="section-header">
+                    <h2>Мої автомобілі</h2>
+                    <button class="btn btn-primary" id="addCarBtn">
+                        <span>+</span> Додати авто
+                    </button>
+                </div>
+                <div class="cars-grid" id="carsGrid">
+                    <p class="empty-message">Додайте свій перший автомобіль</p>
+                </div>
+            </section>
+
+            <!-- Fuel Section -->
+            <section class="content-section" id="section-fuel">
+                <div class="section-header">
+                    <h2>Заправки</h2>
+                    <button class="btn btn-primary" id="addFuelBtn">
+                        <span>+</span> Додати заправку
+                    </button>
+                </div>
+                <div class="fuel-stats" id="fuelStats">
+                    <div class="fuel-stat">
+                        <span class="fuel-stat-label">Остання витрата:</span>
+                        <span class="fuel-stat-value" id="lastConsumption">-- л/100км</span>
+                    </div>
+                    <div class="fuel-stat">
+                        <span class="fuel-stat-label">Середня витрата:</span>
+                        <span class="fuel-stat-value" id="avgFuelConsumption">-- л/100км</span>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table" id="fuelTable">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Авто</th>
+                                <th>Літри</th>
+                                <th>Ціна/л</th>
+                                <th>Сума</th>
+                                <th>Пробіг</th>
+                                <th>Л/100км</th>
+                                <th>Дії</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fuelTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Expenses Section -->
+            <section class="content-section" id="section-expenses">
+                <div class="section-header">
+                    <h2>Витрати</h2>
+                    <button class="btn btn-primary" id="addExpenseBtn">
+                        <span>+</span> Додати витрату
+                    </button>
+                </div>
+                <div class="expense-categories" id="expenseCategories">
+                </div>
+                <div class="table-container">
+                    <table class="data-table" id="expensesTable">
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Авто</th>
+                                <th>Категорія</th>
+                                <th>Опис</th>
+                                <th>Сума</th>
+                                <th>Дії</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expensesTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Reminders Section -->
+            <section class="content-section" id="section-reminders">
+                <div class="section-header">
+                    <h2>Нагадування</h2>
+                    <button class="btn btn-primary" id="addReminderBtn">
+                        <span>+</span> Додати нагадування
+                    </button>
+                </div>
+                <div class="reminders-grid" id="remindersGrid">
+                    <p class="empty-message">Немає нагадувань</p>
+                </div>
+            </section>
+
+            <!-- Statistics Section -->
+            <section class="content-section" id="section-statistics">
+                <div class="section-header">
+                    <h2>Статистика</h2>
+                </div>
+                <div class="stats-filters">
+                    <select id="statsCarFilter">
+                        <option value="">Усі автомобілі</option>
+                    </select>
+                    <select id="statsPeriodFilter">
+                        <option value="all">За весь час</option>
+                        <option value="year">За рік</option>
+                        <option value="month">За місяць</option>
+                    </select>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-card full-width">
+                        <h3>Динаміка витрати пального</h3>
+                        <canvas id="consumptionTrendChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Порівняння витрат</h3>
+                        <canvas id="expensesCompareChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Витрати на пальне по місяцях</h3>
+                        <canvas id="fuelCostChart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal: Add/Edit Car -->
+    <div class="modal" id="carModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="carModalTitle">Додати автомобіль</h3>
+                <button class="modal-close" data-close="carModal">&times;</button>
+            </div>
+            <form id="carForm">
+                <input type="hidden" id="carId">
+                <div class="form-group">
+                    <label for="carBrand">Марка *</label>
+                    <input type="text" id="carBrand" required placeholder="Toyota">
+                </div>
+                <div class="form-group">
+                    <label for="carModel">Модель *</label>
+                    <input type="text" id="carModel" required placeholder="Camry">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="carYear">Рік випуску</label>
+                        <input type="number" id="carYear" min="1900" max="2030" placeholder="2020">
+                    </div>
+                    <div class="form-group">
+                        <label for="carMileage">Поточний пробіг (км)</label>
+                        <input type="number" id="carMileage" min="0" placeholder="50000">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="carPlate">Номерний знак</label>
+                    <input type="text" id="carPlate" placeholder="AA 1234 BB">
+                </div>
+                <div class="form-group">
+                    <label for="carColor">Колір</label>
+                    <input type="text" id="carColor" placeholder="Сірий">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-close="carModal">Скасувати</button>
+                    <button type="submit" class="btn btn-primary">Зберегти</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add/Edit Fuel -->
+    <div class="modal" id="fuelModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="fuelModalTitle">Додати заправку</h3>
+                <button class="modal-close" data-close="fuelModal">&times;</button>
+            </div>
+            <form id="fuelForm">
+                <input type="hidden" id="fuelId">
+                <div class="form-group">
+                    <label for="fuelCarId">Автомобіль *</label>
+                    <select id="fuelCarId" required>
+                        <option value="">Виберіть авто</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="fuelDate">Дата *</label>
+                    <input type="date" id="fuelDate" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fuelLiters">Літри *</label>
+                        <input type="number" id="fuelLiters" step="0.01" min="0" required placeholder="45.5">
+                    </div>
+                    <div class="form-group">
+                        <label for="fuelPrice">Ціна за літр (грн) *</label>
+                        <input type="number" id="fuelPrice" step="0.01" min="0" required placeholder="52.50">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="fuelMileage">Пробіг (км) *</label>
+                    <input type="number" id="fuelMileage" min="0" required placeholder="51500">
+                </div>
+                <div class="form-group">
+                    <label for="fuelStation">АЗС</label>
+                    <input type="text" id="fuelStation" placeholder="ОККО">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="fuelFullTank" checked>
+                        Повний бак
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-close="fuelModal">Скасувати</button>
+                    <button type="submit" class="btn btn-primary">Зберегти</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add/Edit Expense -->
+    <div class="modal" id="expenseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="expenseModalTitle">Додати витрату</h3>
+                <button class="modal-close" data-close="expenseModal">&times;</button>
+            </div>
+            <form id="expenseForm">
+                <input type="hidden" id="expenseId">
+                <div class="form-group">
+                    <label for="expenseCarId">Автомобіль *</label>
+                    <select id="expenseCarId" required>
+                        <option value="">Виберіть авто</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="expenseDate">Дата *</label>
+                    <input type="date" id="expenseDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="expenseCategory">Категорія *</label>
+                    <select id="expenseCategory" required>
+                        <option value="">Виберіть категорію</option>
+                        <option value="repair">🔧 Ремонт</option>
+                        <option value="maintenance">🛠️ ТО</option>
+                        <option value="insurance">📋 Страховка</option>
+                        <option value="tax">📄 Податок</option>
+                        <option value="parking">🅿️ Паркування</option>
+                        <option value="wash">🧽 Мийка</option>
+                        <option value="tires">🛞 Шини</option>
+                        <option value="other">📦 Інше</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="expenseAmount">Сума (грн) *</label>
+                    <input type="number" id="expenseAmount" step="0.01" min="0" required placeholder="1500">
+                </div>
+                <div class="form-group">
+                    <label for="expenseDescription">Опис</label>
+                    <textarea id="expenseDescription" rows="3" placeholder="Заміна гальмівних колодок"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-close="expenseModal">Скасувати</button>
+                    <button type="submit" class="btn btn-primary">Зберегти</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Add/Edit Reminder -->
+    <div class="modal" id="reminderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="reminderModalTitle">Додати нагадування</h3>
+                <button class="modal-close" data-close="reminderModal">&times;</button>
+            </div>
+            <form id="reminderForm">
+                <input type="hidden" id="reminderId">
+                <div class="form-group">
+                    <label for="reminderCarId">Автомобіль *</label>
+                    <select id="reminderCarId" required>
+                        <option value="">Виберіть авто</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reminderType">Тип *</label>
+                    <select id="reminderType" required>
+                        <option value="">Виберіть тип</option>
+                        <option value="maintenance">🛠️ Технічне обслуговування</option>
+                        <option value="insurance">📋 Страховка</option>
+                        <option value="inspection">🔍 Техогляд</option>
+                        <option value="oil">🛢️ Заміна масла</option>
+                        <option value="tires">🛞 Заміна шин</option>
+                        <option value="other">📦 Інше</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="reminderDate">Дата *</label>
+                    <input type="date" id="reminderDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="reminderMileage">Або при пробігу (км)</label>
+                    <input type="number" id="reminderMileage" min="0" placeholder="60000">
+                </div>
+                <div class="form-group">
+                    <label for="reminderNote">Примітка</label>
+                    <textarea id="reminderNote" rows="2" placeholder="Деталі нагадування"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-close="reminderModal">Скасувати</button>
+                    <button type="submit" class="btn btn-primary">Зберегти</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Export -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3>Експорт даних</h3>
+                <button class="modal-close" data-close="exportModal">&times;</button>
+            </div>
+            <div class="export-options">
+                <button class="export-option" id="exportJSON">
+                    <span class="export-icon">📄</span>
+                    <span class="export-text">Експорт в JSON</span>
+                </button>
+                <button class="export-option" id="exportCSV">
+                    <span class="export-icon">📊</span>
+                    <span class="export-text">Експорт в CSV</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/storage.js"></script>
+    <script src="js/cars.js"></script>
+    <script src="js/fuel.js"></script>
+    <script src="js/expenses.js"></script>
+    <script src="js/reminders.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

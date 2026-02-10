@@ -1,0 +1,19 @@
+{
+    "name": "autocontrol",
+    "version": "1.0.0",
+    "description": "Car management app with Telegram bot",
+    "main": "server/index.js",
+    "scripts": {
+        "start": "node server/index.js",
+        "dev": "node server/index.js"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "node-telegram-bot-api": "^0.64.0"
+    }
+}
