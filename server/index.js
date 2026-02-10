@@ -124,6 +124,39 @@ app.use((req, res, next) => {
 // Статичні файли (після авторизації!)
 app.use(express.static(path.join(__dirname, '..')));
 
+// ========== MIGRATION (одноразова міграція старих даних) ==========
+
+const fs = require('fs');
+
+app.post('/api/migrate', (req, res) => {
+    const oldDataFile = path.join(__dirname, 'data.json');
+
+    if (!fs.existsSync(oldDataFile)) {
+        return res.json({ success: false, error: 'Старий файл data.json не знайдено' });
+    }
+
+    try {
+        const oldData = JSON.parse(fs.readFileSync(oldDataFile, 'utf-8'));
+        req.storage.importData(oldData);
+
+        // Перейменовуємо old file щоб не мігрувати повторно
+        fs.renameSync(oldDataFile, oldDataFile + '.migrated');
+
+        res.json({
+            success: true,
+            message: 'Дані мігровано!',
+            stats: {
+                cars: (oldData.cars || []).length,
+                fuel: (oldData.fuel || []).length,
+                expenses: (oldData.expenses || []).length,
+                coupons: (oldData.coupons || []).length
+            }
+        });
+    } catch (error) {
+        res.json({ success: false, error: 'Помилка міграції: ' + error.message });
+    }
+});
+
 // ========== API Routes ==========
 
 /**
