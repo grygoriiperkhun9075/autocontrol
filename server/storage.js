@@ -12,7 +12,8 @@ class Storage {
         cars: [],
         fuel: [],
         expenses: [],
-        reminders: []
+        reminders: [],
+        coupons: []
     };
 
     /**
@@ -175,6 +176,49 @@ class Storage {
         this.data.expenses.push(expense);
         this.save();
         return expense;
+    }
+
+    // ========== COUPONS (ТАЛОНИ) ==========
+
+    /**
+     * Отримання всіх талонів
+     */
+    static getCoupons() {
+        return this.data.coupons || [];
+    }
+
+    /**
+     * Додавання купівлі талонів
+     */
+    static addCoupon(couponData) {
+        const coupon = {
+            id: this.generateId(),
+            date: couponData.date || new Date().toISOString().split('T')[0],
+            liters: parseFloat(couponData.liters),
+            pricePerLiter: parseFloat(couponData.pricePerLiter) || 0,
+            supplier: couponData.supplier || '',
+            note: couponData.note || '',
+            source: couponData.source || 'telegram',
+            createdAt: new Date().toISOString()
+        };
+        if (!this.data.coupons) this.data.coupons = [];
+        this.data.coupons.push(coupon);
+        this.save();
+        return coupon;
+    }
+
+    /**
+     * Видалення талону
+     */
+    static deleteCoupon(id) {
+        if (!this.data.coupons) return false;
+        const before = this.data.coupons.length;
+        this.data.coupons = this.data.coupons.filter(c => c.id !== id);
+        if (this.data.coupons.length < before) {
+            this.save();
+            return true;
+        }
+        return false;
     }
 
     /**

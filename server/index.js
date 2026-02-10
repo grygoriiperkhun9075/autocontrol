@@ -91,6 +91,36 @@ app.post('/api/expenses', (req, res) => {
     res.json(expense);
 });
 
+// ========== COUPONS (ТАЛОНИ) ==========
+
+/**
+ * GET /api/coupons - Отримання списку талонів
+ */
+app.get('/api/coupons', (req, res) => {
+    res.json(Storage.getCoupons());
+});
+
+/**
+ * POST /api/coupons - Додавання купівлі талонів
+ */
+app.post('/api/coupons', (req, res) => {
+    const coupon = Storage.addCoupon({
+        ...req.body,
+        source: req.body.source || 'web'
+    });
+    res.json(coupon);
+});
+
+/**
+ * DELETE /api/coupons/:id - Видалення талону
+ */
+app.delete('/api/coupons/:id', (req, res) => {
+    const deleted = Storage.deleteCoupon(req.params.id);
+    res.json({ success: deleted });
+});
+
+// ========== SYNC ==========
+
 /**
  * GET /api/sync - Синхронізація даних з frontend
  */
@@ -106,12 +136,13 @@ app.get('/api/sync', (req, res) => {
  * POST /api/sync - Імпорт даних з frontend
  */
 app.post('/api/sync', (req, res) => {
-    const { cars, fuel, expenses, reminders } = req.body;
+    const { cars, fuel, expenses, reminders, coupons } = req.body;
 
     if (cars) Storage.data.cars = cars;
     if (fuel) Storage.data.fuel = fuel;
     if (expenses) Storage.data.expenses = expenses;
     if (reminders) Storage.data.reminders = reminders;
+    if (coupons) Storage.data.coupons = coupons;
 
     Storage.save();
 

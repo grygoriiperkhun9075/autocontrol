@@ -1148,3 +1148,88 @@ form {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--accent-primary);
 }
+
+/* ===== Coupons Section ===== */
+.coupons-balance-grid {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.coupon-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.coupon-balance-card {
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.coupon-balance-positive {
+    color: var(--success) !important;
+}
+
+.coupon-balance-negative {
+    color: var(--danger) !important;
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.coupon-status-ok {
+    color: var(--success) !important;
+}
+
+.coupon-status-warning {
+    color: var(--danger) !important;
+    font-weight: 600;
+}
+
+.coupons-tables {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.coupon-table-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+.usage-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 120px;
+}
+
+.usage-bar {
+    height: 8px;
+    background: var(--accent-gradient);
+    border-radius: 4px;
+    min-width: 4px;
+    max-width: 100%;
+    transition: width 0.5s ease;
+}
+
+.usage-percent {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.total-row td {
+    background: var(--bg-tertiary) !important;
+    border-top: 2px solid var(--accent-primary);
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .coupons-balance-grid {
+        grid-template-columns: 1fr;
+    }
+}

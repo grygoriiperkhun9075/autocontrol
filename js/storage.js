@@ -7,7 +7,8 @@ const Storage = {
         CARS: 'autocontrol_cars',
         FUEL: 'autocontrol_fuel',
         EXPENSES: 'autocontrol_expenses',
-        REMINDERS: 'autocontrol_reminders'
+        REMINDERS: 'autocontrol_reminders',
+        COUPONS: 'autocontrol_coupons'
     },
 
     // URL сервера (відносний шлях для роботи і локально, і на Railway)
@@ -110,6 +111,7 @@ const Storage = {
             fuel: this.get(this.KEYS.FUEL),
             expenses: this.get(this.KEYS.EXPENSES),
             reminders: this.get(this.KEYS.REMINDERS),
+            coupons: this.get(this.KEYS.COUPONS),
             exportedAt: new Date().toISOString()
         };
     },
@@ -122,6 +124,7 @@ const Storage = {
         if (data.fuel) this.set(this.KEYS.FUEL, data.fuel);
         if (data.expenses) this.set(this.KEYS.EXPENSES, data.expenses);
         if (data.reminders) this.set(this.KEYS.REMINDERS, data.reminders);
+        if (data.coupons) this.set(this.KEYS.COUPONS, data.coupons);
     },
 
     /**

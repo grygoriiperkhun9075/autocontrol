@@ -38,6 +38,10 @@
                     <span class="nav-icon">⛽</span>
                     <span class="nav-text">Заправки</span>
                 </button>
+                <button class="nav-item" data-section="coupons">
+                    <span class="nav-icon">🎫</span>
+                    <span class="nav-text">Талони</span>
+                </button>
                 <button class="nav-item" data-section="expenses">
                     <span class="nav-icon">💰</span>
                     <span class="nav-text">Витрати</span>
@@ -186,6 +190,80 @@
                         <tbody id="fuelTableBody">
                         </tbody>
                     </table>
+                </div>
+            </section>
+
+            <!-- Coupons Section -->
+            <section class="content-section" id="section-coupons">
+                <div class="section-header">
+                    <h2>🎫 Талони на пальне</h2>
+                    <button class="btn btn-primary" id="addCouponBtn">
+                        <span>+</span> Додати купівлю
+                    </button>
+                </div>
+
+                <div class="dashboard-grid coupons-balance-grid">
+                    <div class="stat-card coupon-card">
+                        <div class="stat-icon">🎫</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="couponsPurchased">0</span>
+                            <span class="stat-label">Куплено (літрів)</span>
+                        </div>
+                    </div>
+                    <div class="stat-card coupon-card">
+                        <div class="stat-icon">⛽</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="couponsUsed">0</span>
+                            <span class="stat-label">Використано (літрів)</span>
+                        </div>
+                    </div>
+                    <div class="stat-card coupon-card coupon-balance-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="couponsBalance">0</span>
+                            <span class="stat-label" id="couponsStatus">Баланс</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="coupons-tables">
+                    <div class="coupon-table-section">
+                        <h3>📝 Історія купівель талонів</h3>
+                        <div class="table-container">
+                            <table class="data-table" id="couponsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Дата</th>
+                                        <th>Літри</th>
+                                        <th>Ціна/л</th>
+                                        <th>Сума</th>
+                                        <th>Постачальник</th>
+                                        <th>Дії</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="couponsTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="coupon-table-section">
+                        <h3>🚗 Використання по автомобілях</h3>
+                        <div class="table-container">
+                            <table class="data-table" id="usageTable">
+                                <thead>
+                                    <tr>
+                                        <th>Автомобіль</th>
+                                        <th>Заправлено (л)</th>
+                                        <th>Заправок</th>
+                                        <th>Частка від талонів</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usageTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -473,10 +551,49 @@
         </div>
     </div>
 
+    <!-- Modal: Coupon -->
+    <div class="modal" id="couponModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Додати купівлю талонів</h3>
+                <button class="modal-close" data-close="couponModal">&times;</button>
+            </div>
+            <form id="couponForm">
+                <div class="form-group">
+                    <label for="couponDate">Дата *</label>
+                    <input type="date" id="couponDate" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="couponLiters">Кількість літрів *</label>
+                        <input type="number" id="couponLiters" step="0.01" min="0" required placeholder="200">
+                    </div>
+                    <div class="form-group">
+                        <label for="couponPrice">Ціна за літр (грн)</label>
+                        <input type="number" id="couponPrice" step="0.01" min="0" placeholder="52.50">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="couponSupplier">Постачальник</label>
+                    <input type="text" id="couponSupplier" placeholder="ОККО">
+                </div>
+                <div class="form-group">
+                    <label for="couponNote">Примітка</label>
+                    <input type="text" id="couponNote" placeholder="Накладна №2345">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-close="couponModal">Скасувати</button>
+                    <button type="submit" class="btn btn-primary">Зберегти</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/storage.js"></script>
     <script src="js/cars.js"></script>
     <script src="js/fuel.js"></script>
+    <script src="js/coupons.js"></script>
     <script src="js/expenses.js"></script>
     <script src="js/reminders.js"></script>
     <script src="js/charts.js"></script>

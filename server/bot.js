@@ -40,13 +40,15 @@ AA 1234 BB
 45л по 52.50
 \`\`\`
 
-Або в один рядок:
-\`AA 1234 BB 55500 45л 52.50\`
+🎫 *Купівля талонів:*
+\`/talons 200 52.50\` - 200л по 52.50 грн
+\`/talons 100\` - 100л (без ціни)
 
 📋 *Команди:*
 /help - Допомога
 /cars - Список авто
 /stats - Статистика
+/talons - Купівля талонів
             `.trim(), { parse_mode: 'Markdown' });
         });
 
@@ -56,27 +58,21 @@ AA 1234 BB
             this.bot.sendMessage(chatId, `
 📋 *Допомога*
 
-*Формат повідомлення:*
+*Формат заправки:*
 • Номер авто: \`AA 1234 BB\` або \`АА1234ВВ\`
 • Пробіг: \`55500\` або \`пробіг: 55500\`
 • Заправка: \`45л\` або \`45 літрів\`
 • Ціна: \`52.50\` або \`по 52.50 грн\`
 
-*Приклади:*
-\`\`\`
-AA 1234 BB 55500 45л 52.50
-\`\`\`
-\`\`\`
-АА 1234 ВВ
-пробіг: 55500
-заправка 45л по 52.50
-ОККО
-\`\`\`
+*Купівля талонів:*
+\`/talons 200 52.50\` - 200л по 52.50 грн/л
+\`/talons 100\` - 100л (без ціни)
 
 *Команди:*
 /start - Початок роботи
 /cars - Мої автомобілі
 /stats - Статистика витрат
+/talons - Купівля талонів на пальне
             `.trim(), { parse_mode: 'Markdown' });
         });
 
@@ -123,6 +119,11 @@ AA 1234 BB 55500 45л 52.50
 💰 Витрачено на пальне: ${totalFuelCost.toFixed(0)} грн
 📈 Середня витрата: ${avg} л/100км
             `.trim(), { parse_mode: 'Markdown' });
+        });
+
+        // Команда /talons - купівля талонів
+        this.bot.onText(/\/talons\s+(.+)/, (msg, match) => {
+            this.handleCouponCommand(msg, match[1]);
         });
 
         // Обробка текстових повідомлень
@@ -205,6 +206,55 @@ AA 1234 BB 55500 45л 52.50
 
         this.bot.sendMessage(chatId, confirmation + (fuel.consumption > 0 ? `\n📊 Витрата: ${fuel.consumption} л/100км` : ''),
             { parse_mode: 'Markdown' });
+    }
+    /**
+     * Обробка команди /talons (купівля талонів)
+     */
+    handleCouponCommand(msg, args) {
+        if (!this.bot) return;
+        const chatId = msg.chat.id;
+
+        // Парсинг: /talons 200 52.50 або /talons 200
+        const parts = args.trim().split(/\s+/);
+        const liters = parseFloat(parts[0]);
+        const pricePerLiter = parts.length > 1 ? parseFloat(parts[1]) : 0;
+
+        if (isNaN(liters) || liters <= 0) {
+            this.bot.sendMessage(chatId, `
+❌ *Невірний формат*
+
+Використовуйте:
+\`/talons 200 52.50\` - 200л по 52.50 грн
+\`/talons 100\` - 100л (без ціни)
+            `.trim(), { parse_mode: 'Markdown' });
+            return;
+        }
+
+        const coupon = Storage.addCoupon({
+            liters: liters,
+            pricePerLiter: pricePerLiter,
+            source: 'telegram'
+        });
+
+        const totalCost = pricePerLiter > 0 ? `\n💰 Сума: ${(liters * pricePerLiter).toFixed(2)} грн` : '';
+
+        // Статистика балансу
+        const allCoupons = Storage.getCoupons();
+        const totalPurchased = allCoupons.reduce((sum, c) => sum + c.liters, 0);
+        const allFuel = Storage.getFuel();
+        const totalUsed = allFuel.reduce((sum, f) => sum + f.liters, 0);
+        const balance = totalPurchased - totalUsed;
+
+        this.bot.sendMessage(chatId, `
+✅ *Талони зареєстровано!*
+
+🎫 Куплено: *${liters} л*${pricePerLiter > 0 ? `\n💵 Ціна: ${pricePerLiter.toFixed(2)} грн/л` : ''}${totalCost}
+
+📊 *Баланс талонів:*
+• Всього куплено: ${totalPurchased.toFixed(1)} л
+• Використано: ${totalUsed.toFixed(1)} л
+• Залишок: ${balance >= 0 ? '+' : ''}${balance.toFixed(1)} л
+        `.trim(), { parse_mode: 'Markdown' });
     }
 }
 

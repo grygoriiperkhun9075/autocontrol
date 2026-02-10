@@ -93,6 +93,7 @@ const App = {
             'dashboard': 'Головна',
             'cars': 'Автомобілі',
             'fuel': 'Заправки',
+            'coupons': 'Талони',
             'expenses': 'Витрати',
             'reminders': 'Нагадування',
             'statistics': 'Статистика'
@@ -126,6 +127,9 @@ const App = {
             case 'fuel':
                 Fuel.renderTable(carId);
                 Fuel.updateStats(carId);
+                break;
+            case 'coupons':
+                Coupons.renderSection(this.currentPeriod);
                 break;
             case 'expenses':
                 Expenses.renderTable(carId);
@@ -217,6 +221,7 @@ const App = {
             }
             Expenses.openAddModal();
         });
+        document.getElementById('addCouponBtn').addEventListener('click', () => Coupons.openAddModal());
         document.getElementById('addReminderBtn').addEventListener('click', () => {
             if (Cars.getAll().length === 0) {
                 alert('Спочатку додайте автомобіль');
@@ -261,6 +266,7 @@ const App = {
         document.getElementById('fuelForm').addEventListener('submit', (e) => Fuel.handleFormSubmit(e));
         document.getElementById('expenseForm').addEventListener('submit', (e) => Expenses.handleFormSubmit(e));
         document.getElementById('reminderForm').addEventListener('submit', (e) => Reminders.handleFormSubmit(e));
+        document.getElementById('couponForm').addEventListener('submit', (e) => Coupons.handleFormSubmit(e));
     },
 
     /**
