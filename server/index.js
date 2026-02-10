@@ -1,6 +1,6 @@
 /**
  * АвтоКонтроль Server
- * Express сервер з Telegram Bot інтеграцією
+ * Express сервер з мульти-тенант авторизацією та Telegram Bot інтеграцією
  */
 
 require('dotenv').config({ path: __dirname + '/.env' });
@@ -8,8 +8,9 @@ require('dotenv').config({ path: __dirname + '/.env' });
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const Storage = require('./storage');
-const AutoControlBot = require('./bot');
+const Auth = require('./auth');
+const { getStorage } = require('./storage');
+const BotManager = require('./botManager');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,13 +18,111 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Ініціалізація
+Auth.init();
+
+// ========== AUTH ROUTES (без авторизації) ==========
+
+// Сторінка логіну
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'login.html'));
+});
+
+// Сторінка реєстрації
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'register.html'));
+});
+
+// CSS / JS для сторінок логіну (без авторизації)
+app.get('/css/:file', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'css', req.params.file));
+});
+
+// API: Логін
+app.post('/api/auth/login', (req, res) => {
+    const { login, password } = req.body;
+
+    if (!login || !password) {
+        return res.status(400).json({ success: false, error: 'Вкажіть логін і пароль' });
+    }
+
+    const result = Auth.login(login, password);
+
+    if (!result.success) {
+        return res.status(401).json(result);
+    }
+
+    // Встановлюємо cookie
+    res.setHeader('Set-Cookie',
+        `autocontrol_session=${result.token}; Path=/; HttpOnly; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`
+    );
+
+    res.json({ success: true, company: result.company });
+});
+
+// API: Реєстрація
+app.post('/api/auth/register', (req, res) => {
+    const { companyName, login, password, botToken } = req.body;
+
+    if (!companyName || !login || !password) {
+        return res.status(400).json({ success: false, error: 'Заповніть всі обов\'язкові поля' });
+    }
+
+    if (password.length < 4) {
+        return res.status(400).json({ success: false, error: 'Пароль має бути мінімум 4 символи' });
+    }
+
+    const result = Auth.register({ companyName, login, password, botToken });
+
+    if (!result.success) {
+        return res.status(400).json(result);
+    }
+
+    // Запускаємо бота для нової компанії
+    if (botToken) {
+        BotManager.startBot(result.company.id, botToken);
+    }
+
+    // Автоматичний логін після реєстрації
+    const loginResult = Auth.login(login, password);
+
+    res.setHeader('Set-Cookie',
+        `autocontrol_session=${loginResult.token}; Path=/; HttpOnly; Max-Age=${7 * 24 * 60 * 60}; SameSite=Lax`
+    );
+
+    res.json({ success: true, company: result.company });
+});
+
+// API: Логаут
+app.post('/api/auth/logout', (req, res) => {
+    const cookies = Auth.parseCookies(req.headers.cookie);
+    const token = cookies['autocontrol_session'];
+
+    if (token) {
+        Auth.logout(token);
+    }
+
+    res.setHeader('Set-Cookie',
+        'autocontrol_session=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax'
+    );
+
+    res.json({ success: true });
+});
+
+// ========== ЗАХИЩЕНІ МАРШРУТИ ==========
+
+// Middleware авторизації для всіх інших маршрутів
+app.use(Auth.requireAuth);
+
+// Middleware: додати storage до запиту
+app.use((req, res, next) => {
+    req.storage = getStorage(req.companyId);
+    next();
+});
+
+// Статичні файли (після авторизації!)
 app.use(express.static(path.join(__dirname, '..')));
-
-// Ініціалізація storage
-Storage.init();
-
-// Ініціалізація Telegram бота
-const bot = new AutoControlBot(process.env.BOT_TOKEN);
 
 // ========== API Routes ==========
 
@@ -31,21 +130,31 @@ const bot = new AutoControlBot(process.env.BOT_TOKEN);
  * GET /api/data - Отримання всіх даних
  */
 app.get('/api/data', (req, res) => {
-    res.json(Storage.getAllData());
+    res.json(req.storage.getAllData());
+});
+
+/**
+ * GET /api/me - Інформація про поточну компанію
+ */
+app.get('/api/me', (req, res) => {
+    res.json({
+        companyId: req.companyId,
+        companyName: req.companyName
+    });
 });
 
 /**
  * GET /api/cars - Отримання списку авто
  */
 app.get('/api/cars', (req, res) => {
-    res.json(Storage.getCars());
+    res.json(req.storage.getCars());
 });
 
 /**
  * POST /api/cars - Додавання авто
  */
 app.post('/api/cars', (req, res) => {
-    const car = Storage.addCar(req.body);
+    const car = req.storage.addCar(req.body);
     res.json(car);
 });
 
@@ -54,14 +163,14 @@ app.post('/api/cars', (req, res) => {
  */
 app.get('/api/fuel', (req, res) => {
     const carId = req.query.carId || null;
-    res.json(Storage.getFuel(carId));
+    res.json(req.storage.getFuel(carId));
 });
 
 /**
  * POST /api/fuel - Додавання заправки
  */
 app.post('/api/fuel', (req, res) => {
-    const fuel = Storage.addFuel({
+    const fuel = req.storage.addFuel({
         ...req.body,
         source: 'web'
     });
@@ -74,9 +183,9 @@ app.post('/api/fuel', (req, res) => {
 app.get('/api/expenses', (req, res) => {
     const carId = req.query.carId || null;
     if (carId) {
-        res.json(Storage.data.expenses.filter(e => e.carId === carId));
+        res.json(req.storage.data.expenses.filter(e => e.carId === carId));
     } else {
-        res.json(Storage.data.expenses);
+        res.json(req.storage.data.expenses);
     }
 });
 
@@ -84,7 +193,7 @@ app.get('/api/expenses', (req, res) => {
  * POST /api/expenses - Додавання витрати
  */
 app.post('/api/expenses', (req, res) => {
-    const expense = Storage.addExpense({
+    const expense = req.storage.addExpense({
         ...req.body,
         source: 'web'
     });
@@ -93,58 +202,35 @@ app.post('/api/expenses', (req, res) => {
 
 // ========== COUPONS (ТАЛОНИ) ==========
 
-/**
- * GET /api/coupons - Отримання списку талонів
- */
 app.get('/api/coupons', (req, res) => {
-    res.json(Storage.getCoupons());
+    res.json(req.storage.getCoupons());
 });
 
-/**
- * POST /api/coupons - Додавання купівлі талонів
- */
 app.post('/api/coupons', (req, res) => {
-    const coupon = Storage.addCoupon({
+    const coupon = req.storage.addCoupon({
         ...req.body,
         source: req.body.source || 'web'
     });
     res.json(coupon);
 });
 
-/**
- * DELETE /api/coupons/:id - Видалення талону
- */
 app.delete('/api/coupons/:id', (req, res) => {
-    const deleted = Storage.deleteCoupon(req.params.id);
+    const deleted = req.storage.deleteCoupon(req.params.id);
     res.json({ success: deleted });
 });
 
 // ========== SYNC ==========
 
-/**
- * GET /api/sync - Синхронізація даних з frontend
- */
 app.get('/api/sync', (req, res) => {
     res.json({
         success: true,
-        data: Storage.getAllData(),
+        data: req.storage.getAllData(),
         timestamp: new Date().toISOString()
     });
 });
 
-/**
- * POST /api/sync - Імпорт даних з frontend
- */
 app.post('/api/sync', (req, res) => {
-    const { cars, fuel, expenses, reminders, coupons } = req.body;
-
-    if (cars) Storage.data.cars = cars;
-    if (fuel) Storage.data.fuel = fuel;
-    if (expenses) Storage.data.expenses = expenses;
-    if (reminders) Storage.data.reminders = reminders;
-    if (coupons) Storage.data.coupons = coupons;
-
-    Storage.save();
+    req.storage.importData(req.body);
 
     res.json({
         success: true,
@@ -157,6 +243,9 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
+// Запуск ботів для всіх компаній
+BotManager.initAll();
+
 // Запуск сервера
 app.listen(PORT, () => {
     console.log(`
@@ -165,7 +254,7 @@ app.listen(PORT, () => {
 ╠════════════════════════════════════════════╣
 ║  📡 Сервер запущено на порті ${PORT}           ║
 ║  🌐 http://localhost:${PORT}                   ║
-║  ${process.env.BOT_TOKEN ? '🤖 Telegram бот активний' : '⚠️  BOT_TOKEN не вказано'}             ║
+║  🔐 Мульти-тенант авторизація активна      ║
 ╚════════════════════════════════════════════╝
     `);
 });

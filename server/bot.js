@@ -1,13 +1,15 @@
 /**
- * Telegram Bot - Бот для збору даних про заправки
+ * Telegram Bot — Бот для збору даних про заправки
+ * Працює з instance-based CompanyStorage
  */
 
 const TelegramBot = require('node-telegram-bot-api');
 const MessageParser = require('./parser');
-const Storage = require('./storage');
 
 class AutoControlBot {
-    constructor(token) {
+    constructor(token, storage) {
+        this.storage = storage;
+
         if (!token) {
             console.log('⚠️  BOT_TOKEN не вказано. Бот працює в демо-режимі.');
             this.bot = null;
@@ -79,7 +81,7 @@ AA 1234 BB
         // Команда /cars
         this.bot.onText(/\/cars/, (msg) => {
             const chatId = msg.chat.id;
-            const cars = Storage.getCars();
+            const cars = this.storage.getCars();
 
             if (cars.length === 0) {
                 this.bot.sendMessage(chatId, '🚗 У вас ще немає автомобілів. Надішліть першу заправку!');
@@ -87,7 +89,7 @@ AA 1234 BB
             }
 
             const carsList = cars.map(car => {
-                const fuelRecords = Storage.getFuel(car.id);
+                const fuelRecords = this.storage.getFuel(car.id);
                 const totalFuel = fuelRecords.reduce((sum, f) => sum + (f.liters * f.pricePerLiter), 0);
                 return `🚗 *${car.brand} ${car.model}*
    📍 ${car.plate}
@@ -101,7 +103,7 @@ AA 1234 BB
         // Команда /stats
         this.bot.onText(/\/stats/, (msg) => {
             const chatId = msg.chat.id;
-            const data = Storage.getAllData();
+            const data = this.storage.getAllData();
 
             const totalFuelCost = data.fuel.reduce((sum, f) => sum + (f.liters * f.pricePerLiter), 0);
             const totalLiters = data.fuel.reduce((sum, f) => sum + f.liters, 0);
@@ -156,7 +158,6 @@ AA 1234 BB
         const parsed = MessageParser.parse(msg.text);
 
         if (!parsed.parsed) {
-            // Не схоже на дані заправки
             this.bot.sendMessage(chatId, `
 🤔 Не вдалося розпізнати дані.
 
@@ -175,11 +176,10 @@ AA 1234 BB
         }
 
         // Шукаємо або створюємо авто
-        let car = Storage.findCarByPlate(parsed.plate);
+        let car = this.storage.findCarByPlate(parsed.plate);
 
         if (!car) {
-            // Створюємо нове авто
-            car = Storage.addCar({
+            car = this.storage.addCar({
                 brand: 'Авто',
                 model: parsed.plate,
                 plate: parsed.plate,
@@ -189,7 +189,7 @@ AA 1234 BB
         }
 
         // Додаємо заправку
-        const fuel = Storage.addFuel({
+        const fuel = this.storage.addFuel({
             carId: car.id,
             liters: parsed.liters,
             pricePerLiter: parsed.pricePerLiter,
@@ -207,6 +207,7 @@ AA 1234 BB
         this.bot.sendMessage(chatId, confirmation + (fuel.consumption > 0 ? `\n📊 Витрата: ${fuel.consumption} л/100км` : ''),
             { parse_mode: 'Markdown' });
     }
+
     /**
      * Обробка команди /talons (купівля талонів)
      */
@@ -214,7 +215,6 @@ AA 1234 BB
         if (!this.bot) return;
         const chatId = msg.chat.id;
 
-        // Парсинг: /talons 200 52.50 або /talons 200
         const parts = args.trim().split(/\s+/);
         const liters = parseFloat(parts[0]);
         const pricePerLiter = parts.length > 1 ? parseFloat(parts[1]) : 0;
@@ -230,7 +230,7 @@ AA 1234 BB
             return;
         }
 
-        const coupon = Storage.addCoupon({
+        this.storage.addCoupon({
             liters: liters,
             pricePerLiter: pricePerLiter,
             source: 'telegram'
@@ -238,10 +238,9 @@ AA 1234 BB
 
         const totalCost = pricePerLiter > 0 ? `\n💰 Сума: ${(liters * pricePerLiter).toFixed(2)} грн` : '';
 
-        // Статистика балансу
-        const allCoupons = Storage.getCoupons();
+        const allCoupons = this.storage.getCoupons();
         const totalPurchased = allCoupons.reduce((sum, c) => sum + c.liters, 0);
-        const allFuel = Storage.getFuel();
+        const allFuel = this.storage.getFuel();
         const totalUsed = allFuel.reduce((sum, f) => sum + f.liters, 0);
         const balance = totalPurchased - totalUsed;
 

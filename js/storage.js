@@ -142,6 +142,10 @@ const Storage = {
     async syncFromServer() {
         try {
             const response = await fetch(this.API_URL + '/sync');
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return false;
+            }
             if (!response.ok) throw new Error('Server error');
 
             const result = await response.json();

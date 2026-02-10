@@ -21,6 +21,8 @@ const App = {
         this.initPeriodSelector();
         this.initMobileMenu();
         this.initSyncButton();
+        this.initLogout();
+        this.loadCompanyInfo();
         Export.init();
 
         // Початковий рендеринг
@@ -59,6 +61,37 @@ const App = {
                 syncBtn.innerHTML = '<span class="nav-icon">🔄</span><span class="nav-text">Синхронізувати</span>';
             });
         }
+    },
+
+    /**
+     * Ініціалізація кнопки виходу
+     */
+    initLogout() {
+        var logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    await fetch('/api/auth/logout', { method: 'POST' });
+                } catch (e) { /* ignore */ }
+                window.location.href = '/login';
+            });
+        }
+    },
+
+    /**
+     * Завантаження інформації про компанію
+     */
+    async loadCompanyInfo() {
+        try {
+            const response = await fetch('/api/me');
+            if (response.ok) {
+                const data = await response.json();
+                var nameEl = document.getElementById('companyName');
+                if (nameEl && data.companyName) {
+                    nameEl.textContent = data.companyName;
+                }
+            }
+        } catch (e) { /* ignore */ }
     },
 
 

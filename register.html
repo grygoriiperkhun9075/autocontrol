@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>АвтоКонтроль — Реєстрація</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #0f0f1a;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 480px;
+            padding: 1.5rem;
+        }
+
+        .auth-card {
+            background: rgba(30, 30, 50, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .auth-logo-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .auth-logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .auth-subtitle {
+            color: #a0a0b8;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #a0a0b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .form-group input::placeholder {
+            color: #6c6c8a;
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: #6c6c8a;
+            margin-top: 0.35rem;
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 0.875rem;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .auth-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-error {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: #ef4444;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .auth-error.visible {
+            display: block;
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            25% {
+                transform: translateX(-5px);
+            }
+
+            75% {
+                transform: translateX(5px);
+            }
+        }
+
+        .auth-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: #a0a0b8;
+        }
+
+        .auth-link a {
+            color: #6366f1;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .auth-link a:hover {
+            text-decoration: underline;
+        }
+
+        .bot-section {
+            margin-top: 0.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bot-section-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #a0a0b8;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <div class="auth-logo-icon">🚗</div>
+                <div class="auth-logo-text">АвтоКонтроль</div>
+            </div>
+
+            <p class="auth-subtitle">Створіть акаунт для вашої компанії</p>
+
+            <div class="auth-error" id="errorMessage"></div>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="companyName">Назва компанії *</label>
+                    <input type="text" id="companyName" placeholder="ТОВ «Перевізник»" required>
+                </div>
+                <div class="form-group">
+                    <label for="login">Логін *</label>
+                    <input type="text" id="login" placeholder="admin" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль *</label>
+                    <input type="password" id="password" placeholder="Мінімум 4 символи" required minlength="4"
+                        autocomplete="new-password">
+                </div>
+
+                <div class="bot-section">
+                    <div class="bot-section-title">🤖 Telegram-бот (опціонально)</div>
+                    <div class="form-group">
+                        <label for="botToken">Bot Token</label>
+                        <input type="text" id="botToken" placeholder="123456:ABC-DEF...">
+                        <div class="form-hint">Отримати в <a href="https://t.me/BotFather" target="_blank"
+                                style="color: #6366f1;">@BotFather</a>. Можна додати пізніше.</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-btn" id="submitBtn">Зареєструватися</button>
+            </form>
+
+            <div class="auth-link">
+                Вже є акаунт? <a href="/login">Увійти</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const btn = document.getElementById('submitBtn');
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.classList.remove('visible');
+            btn.disabled = true;
+            btn.textContent = 'Реєструю...';
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        companyName: document.getElementById('companyName').value,
+                        login: document.getElementById('login').value,
+                        password: document.getElementById('password').value,
+                        botToken: document.getElementById('botToken').value || ''
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    window.location.href = '/';
+                } else {
+                    errorEl.textContent = result.error || 'Помилка реєстрації';
+                    errorEl.classList.add('visible');
+                }
+            } catch (error) {
+                errorEl.textContent = 'Помилка з\'єднання з сервером';
+                errorEl.classList.add('visible');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Зареєструватися';
+            }
+        });
+    </script>
+</body>
+
+</html>

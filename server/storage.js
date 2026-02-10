@@ -1,70 +1,74 @@
 /**
- * Storage - Зберігання даних в JSON файлі
+ * CompanyStorage — Per-company data storage
+ * Кожна компанія має свій файл data/{companyId}.json
  */
 
 const fs = require('fs');
 const path = require('path');
 
-const DATA_FILE = path.join(__dirname, 'data.json');
+const DATA_DIR = path.join(__dirname, 'data');
 
-class Storage {
-    static data = {
-        cars: [],
-        fuel: [],
-        expenses: [],
-        reminders: [],
-        coupons: []
-    };
+class CompanyStorage {
+    constructor(companyId) {
+        this.companyId = companyId;
+        this.dataFile = path.join(DATA_DIR, `${companyId}.json`);
+        this.data = {
+            cars: [],
+            fuel: [],
+            expenses: [],
+            reminders: [],
+            coupons: []
+        };
+        this.load();
+    }
 
     /**
-     * Ініціалізація - завантаження даних з файлу
+     * Завантаження даних з файлу
      */
-    static init() {
+    load() {
         try {
-            if (fs.existsSync(DATA_FILE)) {
-                const content = fs.readFileSync(DATA_FILE, 'utf-8');
+            if (!fs.existsSync(DATA_DIR)) {
+                fs.mkdirSync(DATA_DIR, { recursive: true });
+            }
+            if (fs.existsSync(this.dataFile)) {
+                const content = fs.readFileSync(this.dataFile, 'utf-8');
                 this.data = JSON.parse(content);
-                console.log('📁 Дані завантажено з файлу');
             } else {
                 this.save();
-                console.log('📁 Створено новий файл даних');
             }
         } catch (error) {
-            console.error('❌ Помилка завантаження даних:', error);
+            console.error(`❌ [${this.companyId}] Помилка завантаження:`, error);
         }
     }
 
     /**
-     * Збереження даних у файл
+     * Збереження даних
      */
-    static save() {
+    save() {
         try {
-            fs.writeFileSync(DATA_FILE, JSON.stringify(this.data, null, 2), 'utf-8');
+            if (!fs.existsSync(DATA_DIR)) {
+                fs.mkdirSync(DATA_DIR, { recursive: true });
+            }
+            fs.writeFileSync(this.dataFile, JSON.stringify(this.data, null, 2), 'utf-8');
         } catch (error) {
-            console.error('❌ Помилка збереження даних:', error);
+            console.error(`❌ [${this.companyId}] Помилка збереження:`, error);
         }
     }
 
     /**
      * Генерація ID
      */
-    static generateId() {
+    generateId() {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
 
     // ========== CARS ==========
 
-    /**
-     * Отримання всіх авто
-     */
-    static getCars() {
+    getCars() {
         return this.data.cars;
     }
 
-    /**
-     * Пошук авто за номером
-     */
-    static findCarByPlate(plate) {
+    findCarByPlate(plate) {
         const normalizedPlate = plate.replace(/\s+/g, '').toUpperCase();
         return this.data.cars.find(car => {
             const carPlate = (car.plate || '').replace(/\s+/g, '').toUpperCase();
@@ -72,17 +76,11 @@ class Storage {
         });
     }
 
-    /**
-     * Пошук авто за ID
-     */
-    static findCarById(id) {
+    findCarById(id) {
         return this.data.cars.find(car => car.id === id);
     }
 
-    /**
-     * Додавання авто
-     */
-    static addCar(carData) {
+    addCar(carData) {
         const car = {
             id: this.generateId(),
             brand: carData.brand || 'Невідомо',
@@ -100,20 +98,14 @@ class Storage {
 
     // ========== FUEL ==========
 
-    /**
-     * Отримання всіх заправок
-     */
-    static getFuel(carId = null) {
+    getFuel(carId = null) {
         if (carId) {
             return this.data.fuel.filter(f => f.carId === carId);
         }
         return this.data.fuel;
     }
 
-    /**
-     * Додавання заправки
-     */
-    static addFuel(fuelData) {
+    addFuel(fuelData) {
         const fuel = {
             id: this.generateId(),
             carId: fuelData.carId,
@@ -139,10 +131,7 @@ class Storage {
         return fuel;
     }
 
-    /**
-     * Розрахунок витрати пального
-     */
-    static calculateConsumption(carId, currentMileage, liters) {
+    calculateConsumption(carId, currentMileage, liters) {
         const previousRecords = this.data.fuel
             .filter(f => f.carId === carId && f.mileage < currentMileage && f.fullTank)
             .sort((a, b) => b.mileage - a.mileage);
@@ -159,10 +148,7 @@ class Storage {
 
     // ========== EXPENSES ==========
 
-    /**
-     * Додавання витрати
-     */
-    static addExpense(expenseData) {
+    addExpense(expenseData) {
         const expense = {
             id: this.generateId(),
             carId: expenseData.carId,
@@ -180,17 +166,11 @@ class Storage {
 
     // ========== COUPONS (ТАЛОНИ) ==========
 
-    /**
-     * Отримання всіх талонів
-     */
-    static getCoupons() {
+    getCoupons() {
         return this.data.coupons || [];
     }
 
-    /**
-     * Додавання купівлі талонів
-     */
-    static addCoupon(couponData) {
+    addCoupon(couponData) {
         const coupon = {
             id: this.generateId(),
             date: couponData.date || new Date().toISOString().split('T')[0],
@@ -207,10 +187,7 @@ class Storage {
         return coupon;
     }
 
-    /**
-     * Видалення талону
-     */
-    static deleteCoupon(id) {
+    deleteCoupon(id) {
         if (!this.data.coupons) return false;
         const before = this.data.coupons.length;
         this.data.coupons = this.data.coupons.filter(c => c.id !== id);
@@ -221,12 +198,32 @@ class Storage {
         return false;
     }
 
-    /**
-     * Отримання всіх даних
-     */
-    static getAllData() {
+    // ========== DATA ==========
+
+    getAllData() {
         return this.data;
+    }
+
+    importData(newData) {
+        if (newData.cars) this.data.cars = newData.cars;
+        if (newData.fuel) this.data.fuel = newData.fuel;
+        if (newData.expenses) this.data.expenses = newData.expenses;
+        if (newData.reminders) this.data.reminders = newData.reminders;
+        if (newData.coupons) this.data.coupons = newData.coupons;
+        this.save();
     }
 }
 
-module.exports = Storage;
+/**
+ * Cache of storage instances
+ */
+const storageCache = new Map();
+
+function getStorage(companyId) {
+    if (!storageCache.has(companyId)) {
+        storageCache.set(companyId, new CompanyStorage(companyId));
+    }
+    return storageCache.get(companyId);
+}
+
+module.exports = { CompanyStorage, getStorage };
