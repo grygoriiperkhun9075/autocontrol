@@ -4,6 +4,9 @@ node_modules/
 # Environment
 .env
 
+# Runtime data
+server/data.json
+
 # OS files
 .DS_Store
 Thumbs.db
