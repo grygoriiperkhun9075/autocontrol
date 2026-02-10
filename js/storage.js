@@ -10,8 +10,8 @@ const Storage = {
         REMINDERS: 'autocontrol_reminders'
     },
 
-    // URL сервера (змінити при деплої)
-    API_URL: 'http://localhost:3000/api',
+    // URL сервера (відносний шлях для роботи і локально, і на Railway)
+    API_URL: '/api',
 
     /**
      * Генерація унікального ID
@@ -143,7 +143,8 @@ const Storage = {
 
             const result = await response.json();
             if (result.success && result.data) {
-                this.mergeData(result.data);
+                // Серверні дані мають пріоритет — замінюємо локальні
+                this.importData(result.data);
                 console.log('✅ Дані синхронізовано з сервером');
                 return true;
             }
