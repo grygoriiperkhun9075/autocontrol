@@ -81,13 +81,18 @@ class CompanyStorage {
     }
 
     addCar(carData) {
+        // Нормалізація номера: прибираємо зайві пробіли, uppercase
+        const rawPlate = (carData.plate || '').replace(/\s+/g, '').toUpperCase();
+        // Форматуємо як "XX 1234 XX" якщо відповідає українському формату
+        const plateFormatted = rawPlate.replace(/^([A-ZА-ЯІЇЄ]{2})(\d{4})([A-ZА-ЯІЇЄ]{2})$/, '$1 $2 $3') || rawPlate;
+
         const car = {
             id: this.generateId(),
             brand: carData.brand || 'Невідомо',
             model: carData.model || '',
             year: carData.year || null,
-            mileage: carData.mileage || 0,
-            plate: carData.plate || '',
+            mileage: parseInt(carData.mileage) || 0,
+            plate: plateFormatted,
             color: carData.color || '',
             createdAt: new Date().toISOString()
         };
