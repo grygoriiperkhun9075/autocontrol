@@ -204,17 +204,17 @@ AA 1234 BB
             return;
         }
 
-        // Шукаємо або створюємо авто
+        // Шукаємо авто (тільки існуючі, нові створюються через веб)
         let car = this.storage.findCarByPlate(parsed.plate);
 
         if (!car) {
-            car = this.storage.addCar({
-                brand: 'Авто',
-                model: parsed.plate,
-                plate: parsed.plate,
-                mileage: parsed.mileage
-            });
-            this.bot.sendMessage(chatId, `🆕 Додано нове авто: \`${parsed.plate}\``, { parse_mode: 'Markdown' });
+            const allCars = this.storage.getCars();
+            let availableList = '';
+            if (allCars.length > 0) {
+                availableList = '\n\n📋 *Доступні авто:*\n' + allCars.map(c => `• \`${c.plate}\` — ${c.brand} ${c.model}`).join('\n');
+            }
+            this.bot.sendMessage(chatId, `❌ *Авто \`${parsed.plate}\` не знайдено!*\n\nПеревірте правильність номера.${availableList}`, { parse_mode: 'Markdown' });
+            return;
         }
 
         // Додаємо заправку
