@@ -1,6 +1,6 @@
 /**
  * OKKO SSP Scraper — отримує реальні талони з ssp-online.okko.ua
- * Використовує proxy-service API з JSON авторизацією та Bearer token
+ * API: proxy-service для login/cards, userdata-service для контрактів
  */
 
 const https = require('https');
@@ -11,14 +11,14 @@ class OkkoScraper {
         this.password = password;
         this.baseUrl = 'https://ssp-online-back.okko.ua';
         this.token = null;
-        this.contractId = '0045004860';
+        this.contractId = null; // Визначаємо динамічно
         this.cachedCoupons = [];
         this.lastFetchTime = 0;
         this.CACHE_TTL = 5 * 60 * 1000; // 5 хвилин
     }
 
     /**
-     * HTTP-запит з Bearer token
+     * HTTP-запит з Bearer token та обов'язковими хедерами
      */
     _request(url, options = {}) {
         return new Promise((resolve, reject) => {
@@ -26,10 +26,10 @@ class OkkoScraper {
 
             const headers = {
                 'Accept': 'application/json, text/plain, */*',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Origin': 'https://ssp-online.okko.ua',
                 'Referer': 'https://ssp-online.okko.ua/',
-                'X-App-Version': Date.now().toString(),
+                'X-App-Version': '1770841844620',
                 'X-Rt': Date.now().toString(),
                 ...(this.token ? { 'Authorization': `Bearer ${this.token}` } : {}),
                 ...options.headers
@@ -44,9 +44,11 @@ class OkkoScraper {
             };
 
             const req = https.request(reqOptions, (res) => {
-                let data = '';
-                res.on('data', chunk => data += chunk);
+                // Збираємо дані
+                const chunks = [];
+                res.on('data', chunk => chunks.push(chunk));
                 res.on('end', () => {
+                    const data = Buffer.concat(chunks).toString('utf8');
                     resolve({
                         status: res.statusCode,
                         headers: res.headers,
@@ -71,11 +73,11 @@ class OkkoScraper {
     }
 
     /**
-     * Авторизація в OKKO SSP — JSON POST, отримуємо Bearer token
+     * Авторизація — JSON POST, Bearer token
      */
     async authenticate() {
         try {
-            console.log('🔐 OKKO: Авторизація (JSON)...');
+            console.log('🔐 OKKO: Авторизація...');
 
             const body = JSON.stringify({
                 login: this.login,
@@ -87,7 +89,7 @@ class OkkoScraper {
                 body,
                 headers: {
                     'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(body)
+                    'Content-Length': Buffer.byteLength(body).toString()
                 }
             });
 
@@ -95,191 +97,193 @@ class OkkoScraper {
 
             if (resp.status === 200 || resp.status === 201) {
                 const data = resp.json();
+                this.token = data?.token || data?.accessToken || data?.access_token || null;
 
-                // Шукаємо токен у різних полях відповіді
-                this.token = data?.token || data?.accessToken || data?.access_token || data?.jwt || null;
-
-                if (this.token) {
-                    console.log(`✅ OKKO: Авторизація успішна, token: ${this.token.substring(0, 30)}...`);
-                } else {
-                    console.log(`⚠️ OKKO: Login 200 але токен не знайдено. Відповідь: ${JSON.stringify(data).substring(0, 300)}`);
-                    // Може токен в заголовках
+                if (!this.token) {
+                    // Токен може бути в headers
                     const authHeader = resp.headers['authorization'];
                     if (authHeader) {
                         this.token = authHeader.replace('Bearer ', '');
-                        console.log(`✅ OKKO: Токен з заголовка: ${this.token.substring(0, 30)}...`);
                     }
+                }
+
+                if (!this.token) {
+                    // Може весь body — це токен (JWT string)
+                    if (typeof resp.body === 'string' && resp.body.includes('.') && resp.body.length > 50) {
+                        this.token = resp.body.trim().replace(/"/g, '');
+                    }
+                }
+
+                if (this.token) {
+                    console.log(`✅ OKKO: Токен отримано (${this.token.substring(0, 20)}...)`);
+                } else {
+                    console.log(`⚠️ OKKO: Login 200, але токен не знайдено`);
+                    console.log(`⚠️ OKKO: Body: ${resp.body.substring(0, 300)}`);
+                    console.log(`⚠️ OKKO: Headers: ${JSON.stringify(resp.headers).substring(0, 300)}`);
                 }
                 return true;
             }
 
-            console.error(`❌ OKKO: Помилка авторизації ${resp.status}: ${resp.body.substring(0, 300)}`);
+            console.error(`❌ OKKO: Login failed ${resp.status}: ${resp.body.substring(0, 200)}`);
             return false;
         } catch (error) {
-            console.error('❌ OKKO: Помилка підключення:', error.message);
+            console.error('❌ OKKO: Login error:', error.message);
             return false;
         }
     }
 
     /**
-     * Отримання списку контрактів
+     * Знайти контракт з талонами через userdata-service
      */
-    async getContracts() {
+    async findCouponContract() {
         try {
-            const resp = await this._request(`${this.baseUrl}/proxy-service/contracts`);
+            console.log('📋 OKKO: Пошук контракту з талонами...');
+
+            const resp = await this._request(`${this.baseUrl}/userdata-service/contracts/name`);
             console.log(`📋 OKKO: Contracts status: ${resp.status}`);
+
             if (resp.status === 200) {
-                const data = resp.json();
-                console.log(`📋 OKKO: Contracts: ${JSON.stringify(data).substring(0, 500)}`);
-                return data;
+                const contracts = resp.json();
+                console.log(`📋 OKKO: Контракти: ${JSON.stringify(contracts)}`);
+
+                if (Array.isArray(contracts)) {
+                    // Шукаємо контракт з назвою "талони" або "купон"
+                    const couponContract = contracts.find(c =>
+                        (c.name || '').toLowerCase().includes('талон') ||
+                        (c.name || '').toLowerCase().includes('купон') ||
+                        (c.name || '').toLowerCase().includes('coupon')
+                    );
+
+                    if (couponContract) {
+                        this.contractId = couponContract.contract_id || couponContract.contractId || couponContract.id;
+                        console.log(`✅ OKKO: Контракт талонів: ${this.contractId} ("${couponContract.name}")`);
+                        return this.contractId;
+                    }
+
+                    // Fallback — шукаємо конкретний ID
+                    const fallback = contracts.find(c =>
+                        (c.contract_id || c.contractId || c.id) === '0045004860'
+                    );
+                    if (fallback) {
+                        this.contractId = '0045004860';
+                        console.log(`✅ OKKO: Контракт (fallback): ${this.contractId}`);
+                        return this.contractId;
+                    }
+                }
             }
-            return null;
+
+            // Хардкодний fallback
+            this.contractId = '0045004860';
+            console.log(`⚠️ OKKO: Використовую хардкодний контракт: ${this.contractId}`);
+            return this.contractId;
         } catch (error) {
-            console.error('❌ OKKO: Помилка отримання контрактів:', error.message);
-            return null;
+            console.error('❌ OKKO: Contracts error:', error.message);
+            this.contractId = '0045004860';
+            return this.contractId;
         }
     }
 
     /**
-     * Отримання активних талонів (cards)
+     * Отримання активних талонів
      */
     async fetchActiveCoupons(forceRefresh = false) {
-        // Перевіряємо кеш
         if (!forceRefresh && Date.now() - this.lastFetchTime < this.CACHE_TTL && this.cachedCoupons.length > 0) {
-            console.log(`📦 OKKO: Повертаю з кешу ${this.cachedCoupons.length} талонів`);
+            console.log(`📦 OKKO: Кеш — ${this.cachedCoupons.length} талонів`);
             return this.cachedCoupons;
         }
 
         try {
             // Авторизуємось
-            const authenticated = await this.authenticate();
-            if (!authenticated) {
-                console.error('❌ OKKO: Не вдалось авторизуватись');
-                return this.cachedCoupons;
-            }
+            const auth = await this.authenticate();
+            if (!auth) return this.cachedCoupons;
 
-            // Спробуємо отримати контракти
-            const contracts = await this.getContracts();
-            if (contracts && Array.isArray(contracts) && contracts.length > 0) {
-                const contract = contracts[0];
-                this.contractId = contract.id || contract.contractId || contract.contract_id || this.contractId;
-                console.log(`📋 OKKO: Контракт: ${this.contractId}`);
-            }
+            // Знаходимо контракт з талонами
+            await this.findCouponContract();
 
-            // Основний ендпоінт — /proxy-service/cards (як у браузері)
-            const endpoints = [
-                `/proxy-service/cards?contract_id=${this.contractId}&offset=0&size=100&card_status=CHST0`,
-                `/proxy-service/coupons?contract-id=${this.contractId}&index=0&size=100`,
-                `/proxy-service/coupons?contract_id=${this.contractId}&offset=0&size=100`,
-                `/proxy-service/cards?contract-id=${this.contractId}&index=0&size=100&status=ACTIVATED`,
-            ];
+            // Запитуємо талони: /proxy-service/cards?contract_id=...&card_status=CHST0
+            console.log(`📋 OKKO: Запит cards (контракт: ${this.contractId})...`);
 
-            for (const endpoint of endpoints) {
-                console.log(`📋 OKKO: Спроба ${endpoint}...`);
-                const resp = await this._request(`${this.baseUrl}${endpoint}`);
-                console.log(`📋 OKKO: ${endpoint} → ${resp.status}`);
+            const resp = await this._request(
+                `${this.baseUrl}/proxy-service/cards?contract_id=${this.contractId}&offset=0&size=100&card_status=CHST0`
+            );
 
-                if (resp.status === 200) {
-                    const data = resp.json();
-                    console.log(`📋 OKKO: Response: ${JSON.stringify(data).substring(0, 500)}`);
+            console.log(`📋 OKKO: Cards status: ${resp.status}`);
 
-                    const parsed = this._parseCoupons(data);
-                    if (parsed.length > 0) {
-                        this.cachedCoupons = parsed;
-                        console.log(`✅ OKKO: Знайдено ${this.cachedCoupons.length} талонів через ${endpoint}`);
-                        break;
-                    }
-                } else if (resp.status === 401) {
-                    // Токен протух
-                    console.log('🔄 OKKO: Token expired, re-authenticating...');
-                    this.token = null;
-                    const reauth = await this.authenticate();
-                    if (!reauth) break;
-                    // Повторюємо запит
-                    const retryResp = await this._request(`${this.baseUrl}${endpoint}`);
-                    if (retryResp.status === 200) {
-                        const data = retryResp.json();
-                        const parsed = this._parseCoupons(data);
-                        if (parsed.length > 0) {
-                            this.cachedCoupons = parsed;
-                            console.log(`✅ OKKO: Знайдено ${this.cachedCoupons.length} талонів через ${endpoint} (retry)`);
-                            break;
-                        }
-                    }
-                } else {
-                    console.log(`⚠️ OKKO: ${endpoint} → ${resp.status}: ${resp.body.substring(0, 200)}`);
+            if (resp.status === 200) {
+                const data = resp.json();
+                console.log(`📋 OKKO: Total: ${data?.total || 'N/A'}, keys: ${data ? Object.keys(data).join(',') : 'null'}`);
+
+                this.cachedCoupons = this._parseCoupons(data);
+            } else if (resp.status === 401) {
+                console.log('🔄 OKKO: Re-auth...');
+                this.token = null;
+                await this.authenticate();
+                const retry = await this._request(
+                    `${this.baseUrl}/proxy-service/cards?contract_id=${this.contractId}&offset=0&size=100&card_status=CHST0`
+                );
+                if (retry.status === 200) {
+                    this.cachedCoupons = this._parseCoupons(retry.json());
                 }
+            } else {
+                console.error(`❌ OKKO: Cards error ${resp.status}: ${resp.body.substring(0, 200)}`);
             }
 
             this.lastFetchTime = Date.now();
-            console.log(`📊 OKKO: Підсумок — ${this.cachedCoupons.length} активних талонів`);
+            console.log(`📊 OKKO: Знайдено ${this.cachedCoupons.length} талонів`);
 
             if (this.cachedCoupons.length > 0) {
                 console.log(`📋 OKKO: Приклад: ${JSON.stringify(this.cachedCoupons[0])}`);
             }
 
             return this.cachedCoupons;
-
         } catch (error) {
-            console.error('❌ OKKO: Помилка запиту талонів:', error.message);
+            console.error('❌ OKKO: Fetch error:', error.message);
             return this.cachedCoupons;
         }
     }
 
     /**
-     * Парсинг відповіді з талонами
+     * Парсинг талонів з API
      */
     _parseCoupons(data) {
         if (!data) return [];
 
-        console.log(`🔍 OKKO: Тип даних: ${typeof data}, isArray: ${Array.isArray(data)}`);
-        if (typeof data === 'object' && !Array.isArray(data)) {
-            console.log(`🔍 OKKO: Ключі: ${Object.keys(data).join(', ')}`);
-        }
-
-        // Може бути масив або об'єкт з різними полями
-        let coupons = [];
-        if (Array.isArray(data)) {
-            coupons = data;
+        // Відповідь: { total: N, cards: [...] }
+        let cards = [];
+        if (data.cards && Array.isArray(data.cards)) {
+            cards = data.cards;
+        } else if (Array.isArray(data)) {
+            cards = data;
         } else if (data.content && Array.isArray(data.content)) {
-            coupons = data.content;
+            cards = data.content;
         } else if (data.items && Array.isArray(data.items)) {
-            coupons = data.items;
-        } else if (data.coupons && Array.isArray(data.coupons)) {
-            coupons = data.coupons;
-        } else if (data.cards && Array.isArray(data.cards)) {
-            coupons = data.cards;
-        } else if (data.data && Array.isArray(data.data)) {
-            coupons = data.data;
-        } else if (data.result && Array.isArray(data.result)) {
-            coupons = data.result;
+            cards = data.items;
         }
 
-        console.log(`🔍 OKKO: Знайдено ${coupons.length} елементів у відповіді`);
-        if (coupons.length > 0) {
-            console.log(`🔍 OKKO: Ключі першого: ${JSON.stringify(Object.keys(coupons[0]))}`);
-            console.log(`🔍 OKKO: Перший елемент: ${JSON.stringify(coupons[0]).substring(0, 500)}`);
+        console.log(`🔍 OKKO: Парсинг ${cards.length} карток`);
+        if (cards.length > 0) {
+            console.log(`🔍 OKKO: Ключі: ${Object.keys(cards[0]).join(', ')}`);
         }
 
-        return coupons.map(c => ({
-            number: c.number || c.couponNumber || c.coupon_number || c.cardNumber || c.card_number || '',
+        return cards.map(c => ({
+            number: c.card_num || c.cardNum || c.number || c.couponNumber || '',
             nominal: this._parseNominal(c),
-            fuelType: c.productName || c.product_name || c.fuelType || c.fuel_type || 'Дизельне паливо',
-            productId: c.productId || c.product_id || '9018',
-            validFrom: c.validFrom || c.activate_date || c.startDate || c.valid_from || c.activateDate || '',
-            validTo: c.validTo || c.expire_date || c.endDate || c.valid_to || c.expireDate || '',
-            qr: c.qr || c.qrCode || c.qr_code || c.barcode || '',
-            status: c.status || c.card_status || c.cardStatus || 'ACTIVATED'
+            fuelType: c.product_name || c.productName || 'Дизельне паливо',
+            productId: c.product_id || c.productId || '',
+            validFrom: c.activate_date || c.activateDate || c.validFrom || '',
+            validTo: c.exp_date || c.expDate || c.validTo || c.expire_date || '',
+            qr: c.qr || c.qrCode || c.barcode || '',
+            status: c.card_status || c.cardStatus || c.status || 'CHST0',
+            assignToContract: c.assign_to_contract_in_svfe || false
         })).filter(c => c.number && c.nominal > 0);
     }
 
     /**
-     * Парсинг номіналу
+     * Номінал: 40000 → 40 літрів
      */
-    _parseNominal(coupon) {
-        const nominal = coupon.nominal || coupon.liters || coupon.volume || coupon.amount || coupon.balance || 0;
-        if (nominal > 1000) return Math.round(nominal / 1000);
-        return nominal;
+    _parseNominal(c) {
+        const val = c.nominal || c.liters || c.volume || c.amount || c.balance || 0;
+        return val > 1000 ? Math.round(val / 1000) : val;
     }
 
     /**
@@ -290,21 +294,18 @@ class OkkoScraper {
     }
 
     /**
-     * Отримати доступні номінали
+     * Доступні номінали з кількістю
      */
     getAvailableNominals() {
         const nominals = {};
         for (const c of this.cachedCoupons) {
-            if (!nominals[c.nominal]) {
-                nominals[c.nominal] = 0;
-            }
-            nominals[c.nominal]++;
+            nominals[c.nominal] = (nominals[c.nominal] || 0) + 1;
         }
         return nominals;
     }
 
     /**
-     * Чи ініціалізований скрейпер
+     * Чи налаштований скрейпер
      */
     isConfigured() {
         return !!(this.login && this.password);
