@@ -51,10 +51,13 @@ class AutoControlBot {
         // Команда /start
         this.bot.onText(/\/start/, (msg) => {
             const chatId = msg.chat.id;
+            console.log(`👤 /start від ${msg.from?.first_name || 'Unknown'} (Chat ID: ${chatId})`);
             this.bot.sendMessage(chatId, `
 🚗 *Вітаю в АвтоКонтроль!*
 
 Я допоможу вам вести облік заправок та витрат на автомобілі.
+
+🆔 Ваш Chat ID: \`${chatId}\`
 
 📝 *Як надсилати дані про заправку:*
 \`\`\`
@@ -73,6 +76,7 @@ AA 1234 BB
 /stats - Статистика
 /talons - Купівля талонів
 /coupon - Отримати PDF-талон
+/drivers - Список водіїв
             `.trim(), { parse_mode: 'Markdown' });
         });
 
