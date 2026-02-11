@@ -194,6 +194,7 @@ class CompanyStorage {
             mileage: mileage,
             station: fuelData.station || '',
             fullTank: fuelData.fullTank !== false,
+            paymentMethod: fuelData.paymentMethod || 'coupon',
             consumption: this.calculateConsumption(fuelData.carId, mileage, liters),
             source: fuelData.source || 'telegram',
             createdAt: new Date().toISOString()

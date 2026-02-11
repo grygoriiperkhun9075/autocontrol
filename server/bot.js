@@ -9,6 +9,7 @@ const MessageParser = require('./parser');
 class AutoControlBot {
     constructor(token, storage) {
         this.storage = storage;
+        this.pendingFuel = new Map(); // chatId -> pending fuel data
 
         if (!token) {
             console.log('⚠️  BOT_TOKEN не вказано. Бот працює в демо-режимі.');
@@ -175,6 +176,11 @@ AA 1234 BB
                 this.handleFuelMessage({ ...msg, text: msg.caption });
             }
         });
+
+        // Обробка натискань на кнопки (спосіб оплати)
+        this.bot.on('callback_query', (query) => {
+            this.handlePaymentCallback(query);
+        });
     }
 
     /**
@@ -251,24 +257,104 @@ AA 1234 BB
             }
         }
 
-        // Додаємо заправку
-        const fuel = this.storage.addFuel({
+        // Зберігаємо дані як pending і запитуємо спосіб оплати
+        this.pendingFuel.set(chatId, {
             carId: car.id,
             liters: parsed.liters,
             pricePerLiter: parsed.pricePerLiter,
             mileage: parsed.mileage,
             station: parsed.station,
-            fullTank: parsed.fullTank
+            fullTank: parsed.fullTank,
+            parsed: parsed
         });
 
-        // Підтвердження
-        const confirmation = MessageParser.formatConfirmation({
-            ...parsed,
-            consumption: fuel.consumption
+        const summary = `🚗 *${car.plate}*\n📏 Пробіг: ${parsed.mileage?.toLocaleString() || '—'} км\n⛽ ${parsed.liters} л по ${parsed.pricePerLiter} грн\n💰 Сума: ${(parsed.liters * parsed.pricePerLiter).toFixed(2)} грн`;
+
+        this.bot.sendMessage(chatId, `${summary}\n\n💳 *Оберіть спосіб оплати:*`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        { text: '🎫 Талони', callback_data: 'pay_coupon' },
+                        { text: '💵 Готівка', callback_data: 'pay_cash' }
+                    ]
+                ]
+            }
+        });
+    }
+
+    /**
+     * Обробка натискання кнопки оплати
+     */
+    handlePaymentCallback(query) {
+        if (!this.bot) return;
+        const chatId = query.message.chat.id;
+        const data = query.data;
+
+        // Відповідаємо на callback щоб прибрати "годинник"
+        this.bot.answerCallbackQuery(query.id);
+
+        const pending = this.pendingFuel.get(chatId);
+        if (!pending) {
+            this.bot.editMessageText('⏰ Час вибору вичерпано. Надішліть дані заправки ще раз.', {
+                chat_id: chatId,
+                message_id: query.message.message_id
+            });
+            return;
+        }
+
+        // Визначаємо спосіб оплати
+        const paymentMethod = data === 'pay_cash' ? 'cash' : 'coupon';
+        this.pendingFuel.delete(chatId);
+
+        // Зберігаємо заправку
+        const fuel = this.storage.addFuel({
+            carId: pending.carId,
+            liters: pending.liters,
+            pricePerLiter: pending.pricePerLiter,
+            mileage: pending.mileage,
+            station: pending.station,
+            fullTank: pending.fullTank,
+            paymentMethod: paymentMethod
         });
 
-        this.bot.sendMessage(chatId, confirmation + (fuel.consumption > 0 ? `\n📊 Витрата: ${fuel.consumption} л/100км` : ''),
-            { parse_mode: 'Markdown' });
+        const payLabel = paymentMethod === 'cash' ? '💵 Готівка' : '🎫 Талони';
+        let confirmText = `✅ *Заправку записано!*\n\n`;
+        confirmText += `🚗 ${pending.parsed.plate}\n`;
+        confirmText += `📏 Пробіг: ${pending.parsed.mileage?.toLocaleString() || '—'} км\n`;
+        confirmText += `⛽ ${pending.liters} л по ${pending.pricePerLiter} грн\n`;
+        confirmText += `💰 Сума: ${(pending.liters * pending.pricePerLiter).toFixed(2)} грн\n`;
+        confirmText += `💳 Оплата: *${payLabel}*`;
+
+        if (fuel.consumption > 0) {
+            confirmText += `\n📊 Витрата: ${fuel.consumption} л/100км`;
+        }
+
+        // Показуємо баланс талонів якщо оплата талонами
+        if (paymentMethod === 'coupon') {
+            const balance = this.getCouponBalance();
+            confirmText += `\n\n🎫 Залишок талонів: *${balance.toFixed(1)} л*`;
+        }
+
+        this.bot.editMessageText(confirmText, {
+            chat_id: chatId,
+            message_id: query.message.message_id,
+            parse_mode: 'Markdown'
+        });
+    }
+
+    /**
+     * Розрахунок балансу талонів (куплено - використано талонами)
+     */
+    getCouponBalance() {
+        const allCoupons = this.storage.getCoupons();
+        const totalPurchased = allCoupons.reduce((sum, c) => sum + (parseFloat(c.liters) || 0), 0);
+        const allFuel = this.storage.getFuel();
+        // Враховуємо тільки заправки оплачені талонами (не готівкою)
+        const totalUsed = allFuel
+            .filter(f => f.paymentMethod !== 'cash')
+            .reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0);
+        return totalPurchased - totalUsed;
     }
 
     /**
@@ -300,22 +386,14 @@ AA 1234 BB
         });
 
         const totalCost = pricePerLiter > 0 ? `\n💰 Сума: ${(liters * pricePerLiter).toFixed(2)} грн` : '';
-
-        const allCoupons = this.storage.getCoupons();
-        const totalPurchased = allCoupons.reduce((sum, c) => sum + c.liters, 0);
-        const allFuel = this.storage.getFuel();
-        const totalUsed = allFuel.reduce((sum, f) => sum + f.liters, 0);
-        const balance = totalPurchased - totalUsed;
+        const balance = this.getCouponBalance();
 
         this.bot.sendMessage(chatId, `
 ✅ *Талони зареєстровано!*
 
 🎫 Куплено: *${liters} л*${pricePerLiter > 0 ? `\n💵 Ціна: ${pricePerLiter.toFixed(2)} грн/л` : ''}${totalCost}
 
-📊 *Баланс талонів:*
-• Всього куплено: ${totalPurchased.toFixed(1)} л
-• Використано: ${totalUsed.toFixed(1)} л
-• Залишок: ${balance >= 0 ? '+' : ''}${balance.toFixed(1)} л
+📊 *Баланс талонів:* *${balance >= 0 ? '+' : ''}${balance.toFixed(1)} л*
         `.trim(), { parse_mode: 'Markdown' });
     }
 
