@@ -71,13 +71,13 @@ const Cars = {
         if (!car) return 0;
 
         const fuelRecords = Storage.filter(Storage.KEYS.FUEL, f => f.carId === carId);
-        if (fuelRecords.length === 0) return car.mileage || 0;
+        if (fuelRecords.length === 0) return parseInt(car.mileage) || 0;
 
         const lastRecord = fuelRecords.sort((a, b) =>
             new Date(b.date) - new Date(a.date)
         )[0];
 
-        return Math.max(car.mileage || 0, lastRecord.mileage || 0);
+        return Math.max(parseInt(car.mileage) || 0, parseInt(lastRecord.mileage) || 0);
     },
 
     /**

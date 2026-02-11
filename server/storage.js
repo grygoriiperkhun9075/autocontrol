@@ -106,16 +106,20 @@ class CompanyStorage {
     }
 
     addFuel(fuelData) {
+        const mileage = parseInt(fuelData.mileage) || 0;
+        const liters = parseFloat(fuelData.liters) || 0;
+        const pricePerLiter = parseFloat(fuelData.pricePerLiter) || 0;
+
         const fuel = {
             id: this.generateId(),
             carId: fuelData.carId,
             date: fuelData.date || new Date().toISOString().split('T')[0],
-            liters: fuelData.liters,
-            pricePerLiter: fuelData.pricePerLiter,
-            mileage: fuelData.mileage,
+            liters: liters,
+            pricePerLiter: pricePerLiter,
+            mileage: mileage,
             station: fuelData.station || '',
             fullTank: fuelData.fullTank !== false,
-            consumption: this.calculateConsumption(fuelData.carId, fuelData.mileage, fuelData.liters),
+            consumption: this.calculateConsumption(fuelData.carId, mileage, liters),
             source: fuelData.source || 'telegram',
             createdAt: new Date().toISOString()
         };
@@ -123,8 +127,8 @@ class CompanyStorage {
 
         // Оновлюємо пробіг авто
         const car = this.findCarById(fuelData.carId);
-        if (car && fuelData.mileage > (car.mileage || 0)) {
-            car.mileage = fuelData.mileage;
+        if (car && mileage > (parseInt(car.mileage) || 0)) {
+            car.mileage = mileage;
         }
 
         this.save();
