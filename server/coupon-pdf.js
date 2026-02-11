@@ -1,158 +1,167 @@
 /**
- * PDF Генератор талонів на пальне
- * Створює PDF-документ з талоном обраного номіналу
+ * PDF Генератор талонів на пальне OKKO
+ * Створює PDF-документ з QR-кодом для сканування на АЗС
  */
 
 const PDFDocument = require('pdfkit');
+const QRCode = require('qrcode');
 
 class CouponPDF {
     /**
-     * Генерує PDF-талон
+     * Генерує PDF-талон з QR-кодом
      * @param {Object} options
      * @param {number} options.liters - Номінал в літрах
-     * @param {string} options.companyName - Назва компанії
      * @param {string} options.couponNumber - Номер талону
+     * @param {string} options.qrData - Дані для QR-коду (з OKKO)
      * @param {string} options.date - Дата видачі
      * @param {string} options.validUntil - Дійсний до
      * @param {string} options.fuelType - Тип пального
      * @returns {Promise<Buffer>} PDF як Buffer
      */
-    static generate(options) {
-        return new Promise((resolve, reject) => {
-            try {
-                const doc = new PDFDocument({
-                    size: [420, 595], // A5
-                    margins: { top: 30, bottom: 30, left: 30, right: 30 }
-                });
-
-                const chunks = [];
-                doc.on('data', chunk => chunks.push(chunk));
-                doc.on('end', () => resolve(Buffer.concat(chunks)));
-                doc.on('error', reject);
-
-                const width = 420;
-                const centerX = width / 2;
-
-                // ===== Фон — рамка =====
-                doc.roundedRect(15, 15, width - 30, 565, 10)
-                    .lineWidth(3)
-                    .strokeColor('#6C3CE1')
-                    .stroke();
-
-                // Внутрішня рамка
-                doc.roundedRect(20, 20, width - 40, 555, 8)
-                    .lineWidth(1)
-                    .strokeColor('#8B5CF6')
-                    .stroke();
-
-                // ===== Заголовок =====
-                doc.fontSize(14)
-                    .fillColor('#6C3CE1')
-                    .text('ТАЛОН НА ПАЛЬНЕ', 30, 40, { align: 'center', width: width - 60 });
-
-                // Назва компанії
-                doc.fontSize(18)
-                    .fillColor('#1a1a2e')
-                    .font('Helvetica-Bold')
-                    .text(options.companyName || 'AutoControl', 30, 65, { align: 'center', width: width - 60 });
-
-                // Горизонтальна лінія
-                doc.moveTo(40, 95).lineTo(width - 40, 95)
-                    .lineWidth(1).strokeColor('#E0E0E0').stroke();
-
-                // ===== Номінал — великий =====
-                doc.fontSize(72)
-                    .fillColor('#6C3CE1')
-                    .font('Helvetica-Bold')
-                    .text(`${options.liters}`, 30, 115, { align: 'center', width: width - 60 });
-
-                doc.fontSize(24)
-                    .fillColor('#4a4a6a')
-                    .font('Helvetica')
-                    .text('ЛІТРІВ', 30, 195, { align: 'center', width: width - 60 });
-
-                // Тип пального
-                doc.fontSize(16)
-                    .fillColor('#6C3CE1')
-                    .font('Helvetica-Bold')
-                    .text(options.fuelType || 'ДП / А-95', 30, 230, { align: 'center', width: width - 60 });
-
-                // Горизонтальна лінія
-                doc.moveTo(40, 260).lineTo(width - 40, 260)
-                    .lineWidth(1).strokeColor('#E0E0E0').stroke();
-
-                // ===== Деталі =====
-                const detailsY = 280;
-                const labelX = 50;
-                const valueX = 200;
-
-                const details = [
-                    ['Номер талону:', `#${options.couponNumber}`],
-                    ['Дата видачі:', options.date],
-                    ['Дійсний до:', options.validUntil],
-                    ['Мережа АЗС:', options.station || 'OKKO'],
-                ];
-
-                details.forEach(([label, value], i) => {
-                    const y = detailsY + (i * 30);
-                    doc.fontSize(11)
-                        .fillColor('#666')
-                        .font('Helvetica')
-                        .text(label, labelX, y);
-
-                    doc.fontSize(12)
-                        .fillColor('#1a1a2e')
-                        .font('Helvetica-Bold')
-                        .text(value, valueX, y);
-                });
-
-                // Горизонтальна лінія
-                const lineY = detailsY + details.length * 30 + 15;
-                doc.moveTo(40, lineY).lineTo(width - 40, lineY)
-                    .lineWidth(1).strokeColor('#E0E0E0').stroke();
-
-                // ===== Штрих-код (імітація) =====
-                const barcodeY = lineY + 20;
-                const barcodeWidth = 200;
-                const barcodeX = centerX - barcodeWidth / 2;
-
-                // Малюємо штрих-код із номера талону
-                const code = options.couponNumber.toString();
-                for (let i = 0; i < 40; i++) {
-                    const barWidth = (i % 3 === 0) ? 3 : (i % 2 === 0) ? 2 : 1;
-                    const x = barcodeX + i * 5;
-                    if (i % 2 === 0) {
-                        doc.rect(x, barcodeY, barWidth, 50)
-                            .fillColor('#1a1a2e')
-                            .fill();
-                    }
-                }
-
-                // Номер під штрих-кодом
-                doc.fontSize(10)
-                    .fillColor('#666')
-                    .font('Helvetica')
-                    .text(code.padStart(12, '0'), 30, barcodeY + 55, { align: 'center', width: width - 60 });
-
-                // ===== Підвал =====
-                doc.fontSize(8)
-                    .fillColor('#999')
-                    .font('Helvetica')
-                    .text('Талон дійсний для одноразового використання на мережі АЗС.', 30, 510, {
-                        align: 'center', width: width - 60
-                    });
-
-                doc.fontSize(8)
-                    .fillColor('#999')
-                    .text('Згенеровано системою AutoControl', 30, 525, {
-                        align: 'center', width: width - 60
-                    });
-
-                doc.end();
-            } catch (error) {
-                reject(error);
-            }
+    static async generate(options) {
+        const doc = new PDFDocument({
+            size: [420, 595], // A5
+            margins: { top: 30, bottom: 30, left: 30, right: 30 }
         });
+
+        const chunks = [];
+        doc.on('data', chunk => chunks.push(chunk));
+
+        const finished = new Promise((resolve, reject) => {
+            doc.on('end', () => resolve(Buffer.concat(chunks)));
+            doc.on('error', reject);
+        });
+
+        const width = 420;
+
+        // ===== Рамка =====
+        doc.roundedRect(15, 15, width - 30, 565, 10)
+            .lineWidth(3).strokeColor('#00843D').stroke();
+
+        doc.roundedRect(20, 20, width - 40, 555, 8)
+            .lineWidth(1).strokeColor('#4CAF50').stroke();
+
+        // ===== Лого OKKO =====
+        doc.fontSize(22)
+            .fillColor('#00843D')
+            .font('Helvetica-Bold')
+            .text('OKKO', 30, 35, { align: 'center', width: width - 60 });
+
+        doc.fontSize(10)
+            .fillColor('#666')
+            .font('Helvetica')
+            .text('Мережа АЗС', 30, 60, { align: 'center', width: width - 60 });
+
+        // Горизонтальна лінія
+        doc.moveTo(40, 80).lineTo(width - 40, 80)
+            .lineWidth(1).strokeColor('#E0E0E0').stroke();
+
+        // ===== Заголовок =====
+        doc.fontSize(14)
+            .fillColor('#333')
+            .font('Helvetica-Bold')
+            .text('ТАЛОН НА ПАЛЬНЕ', 30, 90, { align: 'center', width: width - 60 });
+
+        // ===== Номінал =====
+        doc.fontSize(64)
+            .fillColor('#00843D')
+            .font('Helvetica-Bold')
+            .text(`${options.liters}`, 30, 115, { align: 'center', width: width - 60 });
+
+        doc.fontSize(20)
+            .fillColor('#4a4a6a')
+            .font('Helvetica')
+            .text('ЛІТРІВ', 30, 185, { align: 'center', width: width - 60 });
+
+        // Тип пального
+        doc.fontSize(14)
+            .fillColor('#00843D')
+            .font('Helvetica-Bold')
+            .text(options.fuelType || 'Дизельне паливо', 30, 215, { align: 'center', width: width - 60 });
+
+        // Горизонтальна лінія
+        doc.moveTo(40, 240).lineTo(width - 40, 240)
+            .lineWidth(1).strokeColor('#E0E0E0').stroke();
+
+        // ===== QR-код =====
+        if (options.qrData) {
+            try {
+                const qrBuffer = await QRCode.toBuffer(options.qrData, {
+                    width: 160,
+                    margin: 1,
+                    errorCorrectionLevel: 'M'
+                });
+                doc.image(qrBuffer, (width - 160) / 2, 250, { width: 160, height: 160 });
+            } catch (err) {
+                console.error('QR generation error:', err);
+                // Fallback: текст замість QR
+                doc.fontSize(8).fillColor('#999')
+                    .text('QR-код недоступний', 30, 320, { align: 'center', width: width - 60 });
+            }
+        } else {
+            // Якщо немає QR-даних — показуємо номер талону великим
+            doc.fontSize(12).fillColor('#333').font('Helvetica-Bold')
+                .text('Номер талону:', 30, 270, { align: 'center', width: width - 60 });
+            doc.fontSize(14).fillColor('#00843D').font('Helvetica-Bold')
+                .text(options.couponNumber, 30, 290, { align: 'center', width: width - 60 });
+        }
+
+        // ===== Деталі =====
+        const detailsY = 425;
+        const labelX = 60;
+        const valueX = 210;
+
+        const details = [
+            ['Номер талону:', this._formatNumber(options.couponNumber)],
+            ['Дійсний до:', options.validUntil || '—'],
+        ];
+
+        details.forEach(([label, value], i) => {
+            const y = detailsY + (i * 25);
+            doc.fontSize(10).fillColor('#666').font('Helvetica')
+                .text(label, labelX, y);
+            doc.fontSize(11).fillColor('#1a1a2e').font('Helvetica-Bold')
+                .text(value, valueX, y);
+        });
+
+        // Горизонтальна лінія
+        doc.moveTo(40, detailsY + details.length * 25 + 10).lineTo(width - 40, detailsY + details.length * 25 + 10)
+            .lineWidth(1).strokeColor('#E0E0E0').stroke();
+
+        // ===== Підвал =====
+        doc.fontSize(7)
+            .fillColor('#999')
+            .font('Helvetica')
+            .text('Талон дійсний для одноразового використання на мережі АЗС OKKO.', 30, 500, {
+                align: 'center', width: width - 60
+            });
+
+        doc.fontSize(7)
+            .fillColor('#999')
+            .text('Покажіть QR-код касиру для списання палива.', 30, 515, {
+                align: 'center', width: width - 60
+            });
+
+        doc.fontSize(7)
+            .fillColor('#bbb')
+            .text('Згенеровано системою AutoControl', 30, 535, {
+                align: 'center', width: width - 60
+            });
+
+        doc.end();
+        return finished;
+    }
+
+    /**
+     * Форматує номер талону: 99999600000021017335 → 999996 0000002101 7335
+     */
+    static _formatNumber(num) {
+        if (!num) return '—';
+        const s = num.toString().replace(/\s/g, '');
+        if (s.length === 20) {
+            return `${s.slice(0, 6)} ${s.slice(6, 16)} ${s.slice(16)}`;
+        }
+        return num;
     }
 }
 

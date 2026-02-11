@@ -8,9 +8,10 @@ const MessageParser = require('./parser');
 const CouponPDF = require('./coupon-pdf');
 
 class AutoControlBot {
-    constructor(token, storage) {
+    constructor(token, storage, okkoScraper = null) {
         this.storage = storage;
         this.pendingFuel = new Map(); // chatId -> pending fuel data
+        this.okko = okkoScraper;
 
         if (!token) {
             console.log('⚠️  BOT_TOKEN не вказано. Бот працює в демо-режимі.');
@@ -376,63 +377,68 @@ AA 1234 BB
     }
 
     /**
-     * Обробка запиту на PDF-талон — показує доступні номінали
+     * Обробка запиту на PDF-талон — показує доступні талони з OKKO
      */
-    handleCouponPDFRequest(msg) {
+    async handleCouponPDFRequest(msg) {
         if (!this.bot) return;
         const chatId = msg.chat.id;
-        const balance = this.getCouponBalance();
 
-        if (balance <= 0) {
-            this.bot.sendMessage(chatId, `❌ *Немає доступних талонів!*\n\n🎫 Баланс: *${balance.toFixed(1)} л*\n\nСпочатку додайте талони: \`/talons 200 52.50\``, { parse_mode: 'Markdown' });
+        // Якщо є OKKO scraper — показуємо реальні талони
+        if (this.okko && this.okko.isConfigured()) {
+            this.bot.sendMessage(chatId, '⏳ Отримую талони з OKKO...');
+
+            try {
+                const coupons = await this.okko.fetchActiveCoupons();
+
+                if (!coupons || coupons.length === 0) {
+                    this.bot.sendMessage(chatId, '❌ *Немає активних талонів в OKKO*\n\nПеревірте особистий кабінет ssp-online.okko.ua', { parse_mode: 'Markdown' });
+                    return;
+                }
+
+                // Групуємо по номіналу
+                const nominals = this.okko.getAvailableNominals();
+                const keyboard = [];
+                let row = [];
+
+                for (const [nom, count] of Object.entries(nominals).sort((a, b) => a[0] - b[0])) {
+                    row.push({ text: `⛽ ${nom} л (${count} шт)`, callback_data: `coupon_${nom}` });
+                    if (row.length === 2) {
+                        keyboard.push(row);
+                        row = [];
+                    }
+                }
+                if (row.length > 0) keyboard.push(row);
+
+                let text = `🎫 *Талони OKKO*\n\nДоступні талони:\n`;
+                for (const [nom, count] of Object.entries(nominals).sort((a, b) => a[0] - b[0])) {
+                    text += `• ${nom} л — *${count} шт*\n`;
+                }
+                text += `\nОберіть номінал:`;
+
+                this.bot.sendMessage(chatId, text, {
+                    parse_mode: 'Markdown',
+                    reply_markup: { inline_keyboard: keyboard }
+                });
+            } catch (error) {
+                console.error('❌ OKKO fetch error:', error);
+                this.bot.sendMessage(chatId, '❌ Помилка підключення до OKKO. Спробуйте пізніше.');
+            }
             return;
         }
 
-        // Формуємо кнопки з доступними номіналами
-        const denominations = [10, 20, 30, 50, 100];
-        const available = denominations.filter(d => d <= balance);
-
-        if (available.length === 0) {
-            // Якщо баланс менше 10 — дозволяємо весь залишок
-            available.push(Math.floor(balance));
-        }
-
-        // Створюємо ряди кнопок по 3 в ряд
-        const keyboard = [];
-        let row = [];
-        for (const nom of available) {
-            row.push({ text: `⛽ ${nom} л`, callback_data: `coupon_${nom}` });
-            if (row.length === 3) {
-                keyboard.push(row);
-                row = [];
-            }
-        }
-        if (row.length > 0) keyboard.push(row);
-
-        this.bot.sendMessage(chatId, `🎫 *Отримати PDF-талон*\n\n📊 Баланс: *${balance.toFixed(1)} л*\n\nОберіть номінал:`, {
-            parse_mode: 'Markdown',
-            reply_markup: {
-                inline_keyboard: keyboard
-            }
-        });
+        // Fallback — якщо OKKO не налаштоване
+        this.bot.sendMessage(chatId, '❌ *OKKO не налаштовано*\n\nДодайте змінні `OKKO_LOGIN` та `OKKO_PASSWORD` в налаштуваннях.', { parse_mode: 'Markdown' });
     }
 
     /**
-     * Генерація і відправка PDF-талону
+     * Генерація і відправка PDF-талону з реальним QR-кодом OKKO
      */
     async generateAndSendCouponPDF(chatId, liters, messageId = null) {
         if (!this.bot) return;
 
-        const balance = this.getCouponBalance();
-
-        if (liters > balance) {
-            this.bot.sendMessage(chatId, `❌ *Недостатньо талонів!*\n\n🎫 Запитано: ${liters} л\n📊 Баланс: ${balance.toFixed(1)} л`, { parse_mode: 'Markdown' });
-            return;
-        }
-
         // Оновлюємо повідомлення
         if (messageId) {
-            this.bot.editMessageText(`⏳ *Генерую PDF-талон на ${liters} л...*`, {
+            this.bot.editMessageText(`⏳ *Готую талон на ${liters} л...*`, {
                 chat_id: chatId,
                 message_id: messageId,
                 parse_mode: 'Markdown'
@@ -440,43 +446,49 @@ AA 1234 BB
         }
 
         try {
-            // Генеруємо унікальний номер талону
-            const couponNumber = Date.now().toString().slice(-8);
-            const today = new Date();
-            const validUntil = new Date(today);
-            validUntil.setMonth(validUntil.getMonth() + 1);
+            // Отримуємо талони якщо кеш порожній
+            if (this.okko && this.okko.isConfigured()) {
+                await this.okko.fetchActiveCoupons();
 
-            const dateStr = today.toLocaleDateString('uk-UA');
-            const validStr = validUntil.toLocaleDateString('uk-UA');
+                const coupon = this.okko.findCouponByNominal(liters);
+                if (!coupon) {
+                    this.bot.sendMessage(chatId, `❌ *Немає талону на ${liters} л!*\n\nДоступні номінали: ${Object.keys(this.okko.getAvailableNominals()).join(', ')} л`, { parse_mode: 'Markdown' });
+                    return;
+                }
 
-            const pdfBuffer = await CouponPDF.generate({
-                liters: liters,
-                companyName: 'AutoControl',
-                couponNumber: couponNumber,
-                date: dateStr,
-                validUntil: validStr,
-                fuelType: 'ДП / А-95',
-                station: 'OKKO'
-            });
+                // Генеруємо PDF з реальним QR-кодом OKKO
+                const pdfBuffer = await CouponPDF.generate({
+                    liters: coupon.nominal,
+                    couponNumber: coupon.number,
+                    qrData: coupon.qr,
+                    validUntil: coupon.validTo,
+                    fuelType: coupon.fuelType || 'Дизельне паливо'
+                });
 
-            // Відправляємо PDF
-            await this.bot.sendDocument(chatId, pdfBuffer, {
-                caption: `🎫 Талон на *${liters} л* пального\n📅 Дійсний до: ${validStr}\n🔢 Номер: #${couponNumber}`,
-                parse_mode: 'Markdown'
-            }, {
-                filename: `coupon_${liters}L_${couponNumber}.pdf`,
-                contentType: 'application/pdf'
-            });
+                // Форматуємо номер для display
+                const formattedNum = CouponPDF._formatNumber ?
+                    CouponPDF._formatNumber(coupon.number) : coupon.number;
 
-            // Оновлюємо повідомлення з кнопками
-            if (messageId) {
-                this.bot.editMessageText(`✅ *PDF-талон на ${liters} л відправлено!*\n\n📊 Залишок: *${balance.toFixed(1)} л*`, {
-                    chat_id: chatId,
-                    message_id: messageId,
+                // Відправляємо PDF
+                await this.bot.sendDocument(chatId, pdfBuffer, {
+                    caption: `🎫 *Талон OKKO на ${coupon.nominal} л*\n⛽ ${coupon.fuelType || 'Дизельне паливо'}\n📅 Дійсний до: ${coupon.validTo}\n🔢 ${formattedNum}\n\n_Покажіть QR-код касиру на АЗС OKKO_`,
                     parse_mode: 'Markdown'
-                }).catch(() => { });
-            }
+                }, {
+                    filename: `OKKO_${coupon.nominal}L_${coupon.number.slice(-4)}.pdf`,
+                    contentType: 'application/pdf'
+                });
 
+                // Оновлюємо повідомлення
+                if (messageId) {
+                    this.bot.editMessageText(`✅ *Талон на ${coupon.nominal} л відправлено!*`, {
+                        chat_id: chatId,
+                        message_id: messageId,
+                        parse_mode: 'Markdown'
+                    }).catch(() => { });
+                }
+            } else {
+                this.bot.sendMessage(chatId, '❌ OKKO не налаштовано.');
+            }
         } catch (error) {
             console.error('❌ Помилка генерації PDF:', error);
             this.bot.sendMessage(chatId, '❌ Помилка генерації PDF. Спробуйте ще раз.');

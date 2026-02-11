@@ -5,6 +5,7 @@
 const AutoControlBot = require('./bot');
 const Auth = require('./auth');
 const { getStorage } = require('./storage');
+const OkkoScraper = require('./okko-scraper');
 
 class BotManager {
     static bots = new Map(); // companyId → AutoControlBot instance
@@ -40,7 +41,14 @@ class BotManager {
 
         try {
             const storage = getStorage(companyId);
-            const bot = new AutoControlBot(botToken, storage);
+
+            // Ініціалізуємо OKKO scraper якщо є креденшали
+            let okkoScraper = null;
+            if (process.env.OKKO_LOGIN && process.env.OKKO_PASSWORD) {
+                okkoScraper = new OkkoScraper(process.env.OKKO_LOGIN, process.env.OKKO_PASSWORD);
+            }
+
+            const bot = new AutoControlBot(botToken, storage, okkoScraper);
             this.bots.set(companyId, bot);
             console.log(`🤖 [${companyId}] Бот запущено`);
             return bot;
