@@ -159,6 +159,9 @@ AA 1234 BB
             // Ігноруємо команди
             if (msg.text && msg.text.startsWith('/')) return;
 
+            // Перевірка на талони (природна мова)
+            if (msg.text && this.tryParseCoupon(msg)) return;
+
             this.handleFuelMessage(msg);
         });
 
@@ -280,6 +283,52 @@ AA 1234 BB
 • Використано: ${totalUsed.toFixed(1)} л
 • Залишок: ${balance >= 0 ? '+' : ''}${balance.toFixed(1)} л
         `.trim(), { parse_mode: 'Markdown' });
+    }
+
+    /**
+     * Спроба розпізнати повідомлення як талони (природна мова)
+     * Підтримує: "талони 200 52.50", "купівля талонів 200л по 52.50",
+     * "талон 100", "Талони: 200 літрів по 52.50 грн" тощо
+     */
+    tryParseCoupon(msg) {
+        if (!this.bot) return false;
+        const text = msg.text.toLowerCase().trim();
+
+        // Перевіряємо чи є ключові слова талонів
+        const couponKeywords = /(?:талон[иі]?|купівля\s+талон[іи]в|куплен[оі]\s+талон[иі])/i;
+        if (!couponKeywords.test(text)) return false;
+
+        // Витягуємо числа з тексту
+        // Шукаємо літри і ціну в різних форматах
+        const numbers = [];
+        const numberRegex = /(\d+(?:[.,]\d+)?)/g;
+        let match;
+        while ((match = numberRegex.exec(text)) !== null) {
+            numbers.push(parseFloat(match[1].replace(',', '.')));
+        }
+
+        if (numbers.length === 0) {
+            // Ключове слово є, але чисел немає — показуємо інструкцію
+            const chatId = msg.chat.id;
+            this.bot.sendMessage(chatId, `
+🎫 *Щоб додати талони, вкажіть кількість літрів:*
+
+Приклади:
+• \`талони 200 52.50\` — 200л по 52.50 грн
+• \`талони 100\` — 100л
+• \`/talons 200 52.50\`
+            `.trim(), { parse_mode: 'Markdown' });
+            return true;
+        }
+
+        const liters = numbers[0];
+        const pricePerLiter = numbers.length > 1 ? numbers[1] : 0;
+
+        if (liters <= 0) return false;
+
+        // Використовуємо handleCouponCommand
+        this.handleCouponCommand(msg, `${liters} ${pricePerLiter}`);
+        return true;
     }
 }
 
