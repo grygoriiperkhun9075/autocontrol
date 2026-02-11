@@ -123,9 +123,35 @@ AA 1234 BB
             `.trim(), { parse_mode: 'Markdown' });
         });
 
-        // Команда /talons - купівля талонів
+        // Команда /talons - купівля талонів (з аргументами)
         this.bot.onText(/\/talons\s+(.+)/, (msg, match) => {
             this.handleCouponCommand(msg, match[1]);
+        });
+
+        // Команда /talons без аргументів — показати інструкцію
+        this.bot.onText(/\/talons$/, (msg) => {
+            const chatId = msg.chat.id;
+
+            const allCoupons = this.storage.getCoupons();
+            const totalPurchased = allCoupons.reduce((sum, c) => sum + (parseFloat(c.liters) || 0), 0);
+            const allFuel = this.storage.getFuel();
+            const totalUsed = allFuel.reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0);
+            const balance = totalPurchased - totalUsed;
+
+            let reply = `🎫 *Талони на пальне*\n\n`;
+
+            if (allCoupons.length > 0) {
+                reply += `📊 *Баланс:*\n`;
+                reply += `• Куплено: ${totalPurchased.toFixed(1)} л\n`;
+                reply += `• Використано: ${totalUsed.toFixed(1)} л\n`;
+                reply += `• Залишок: ${balance >= 0 ? '+' : ''}${balance.toFixed(1)} л\n\n`;
+            }
+
+            reply += `📝 *Як додати талони:*\n`;
+            reply += `\`/talons 200 52.50\` — 200л по 52.50 грн\n`;
+            reply += `\`/talons 100\` — 100л (без ціни)`;
+
+            this.bot.sendMessage(chatId, reply, { parse_mode: 'Markdown' });
         });
 
         // Обробка текстових повідомлень
