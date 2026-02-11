@@ -36,6 +36,9 @@ class AutoControlBot {
             { command: 'coupon', description: '🎫 Отримати талон OKKO (PDF)' },
             { command: 'talons', description: '💰 Купити талони (літри + ціна)' },
             { command: 'stats', description: '📊 Статистика' },
+            { command: 'drivers', description: '👥 Список авторизованих водіїв' },
+            { command: 'adddriver', description: '➕ Додати водія (адмін)' },
+            { command: 'removedriver', description: '➖ Видалити водія (адмін)' },
         ]).catch(err => console.error('❌ Помилка встановлення меню:', err.message));
     }
 
@@ -173,14 +176,31 @@ AA 1234 BB
             this.bot.sendMessage(chatId, reply, { parse_mode: 'Markdown' });
         });
 
-        // Команда /coupon - отримати PDF-талон
+        // Команда /coupon - отримати PDF-талон (тільки авторизовані)
         this.bot.onText(/\/coupon$/, (msg) => {
+            if (!this.checkDriverAccess(msg)) return;
             this.handleCouponPDFRequest(msg);
         });
 
         this.bot.onText(/\/coupon\s+(\d+)/, (msg, match) => {
+            if (!this.checkDriverAccess(msg)) return;
             const liters = parseInt(match[1]);
             this.generateAndSendCouponPDF(msg.chat.id, liters);
+        });
+
+        // Команда /adddriver - додати авторизованого водія (адмін)
+        this.bot.onText(/\/adddriver(?:\s+(.+))?/, (msg, match) => {
+            this.handleAddDriver(msg, match ? match[1] : '');
+        });
+
+        // Команда /removedriver - видалити водія (адмін)
+        this.bot.onText(/\/removedriver(?:\s+(.+))?/, (msg, match) => {
+            this.handleRemoveDriver(msg, match ? match[1] : '');
+        });
+
+        // Команда /drivers - список водіїв
+        this.bot.onText(/\/drivers/, (msg) => {
+            this.handleListDrivers(msg);
         });
 
         // Обробка текстових повідомлень
@@ -208,6 +228,11 @@ AA 1234 BB
         // Обробка натискань на кнопки (спосіб оплати / талони)
         this.bot.on('callback_query', (query) => {
             if (query.data.startsWith('coupon_')) {
+                // Перевіряємо авторизацію при натисканні кнопки
+                if (!this.storage.isDriverAuthorized(query.message.chat.id)) {
+                    this.bot.answerCallbackQuery(query.id, { text: '🚫 У вас немає доступу до талонів', show_alert: true });
+                    return;
+                }
                 const liters = parseInt(query.data.replace('coupon_', ''));
                 this.bot.answerCallbackQuery(query.id);
                 this.generateAndSendCouponPDF(query.message.chat.id, liters, query.message.message_id);
@@ -389,6 +414,136 @@ AA 1234 BB
             .filter(f => f.paymentMethod !== 'cash')
             .reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0);
         return totalPurchased - totalUsed;
+    }
+
+    // ========== АВТОРИЗАЦІЯ ВОДІЇВ ==========
+
+    /**
+     * Перевірка чи є адміністратором
+     */
+    isAdmin(chatId) {
+        const adminId = process.env.ADMIN_CHAT_ID;
+        if (adminId) return chatId.toString() === adminId.toString();
+        // Якщо ADMIN_CHAT_ID не задано — перший водій в списку є адміном
+        const drivers = this.storage.getDrivers();
+        if (drivers.length > 0) return drivers[0].chatId === chatId;
+        return true; // Якщо список порожній — всі адміни
+    }
+
+    /**
+     * Перевірка доступу водія до талонів
+     */
+    checkDriverAccess(msg) {
+        const chatId = msg.chat.id;
+        if (this.storage.isDriverAuthorized(chatId)) return true;
+
+        const driverName = msg.from?.first_name || 'Водій';
+        this.bot.sendMessage(chatId,
+            `🚫 *${driverName}, у вас немає доступу до талонів*\n\n` +
+            `Ваш ID: \`${chatId}\`\n\n` +
+            `Зверніться до адміністратора для авторизації.`,
+            { parse_mode: 'Markdown' }
+        );
+        return false;
+    }
+
+    /**
+     * /adddriver — додати авторизованого водія (тільки адмін)
+     */
+    handleAddDriver(msg, args) {
+        if (!this.bot) return;
+        const chatId = msg.chat.id;
+
+        if (!this.isAdmin(chatId)) {
+            this.bot.sendMessage(chatId, '🚫 Тільки адміністратор може додавати водіїв.');
+            return;
+        }
+
+        const argStr = (args || '').trim();
+
+        if (!argStr) {
+            this.bot.sendMessage(chatId, `
+➕ *Додати водія*
+
+Способи додавання:
+
+1️⃣ По ID: \`/adddriver 123456789 Ім'я\`
+2️⃣ Перешліть повідомлення водія в чат — я покажу його ID
+
+Ваш Chat ID: \`${chatId}\`
+            `.trim(), { parse_mode: 'Markdown' });
+            return;
+        }
+
+        // Парсимо аргументи: /adddriver 123456789 Ім'я Водія
+        const parts = argStr.split(/\s+/);
+        const driverId = parseInt(parts[0]);
+        const driverName = parts.slice(1).join(' ') || 'Водій';
+
+        if (isNaN(driverId)) {
+            this.bot.sendMessage(chatId, '❌ Невірний формат. Використайте: `/adddriver 123456789 Ім\'я`', { parse_mode: 'Markdown' });
+            return;
+        }
+
+        const result = this.storage.addDriver(driverId, driverName);
+        if (result.success) {
+            this.bot.sendMessage(chatId, `✅ Водій *${driverName}* (ID: \`${driverId}\`) авторизований!`, { parse_mode: 'Markdown' });
+        } else if (result.reason === 'already_exists') {
+            this.bot.sendMessage(chatId, `⚠️ Водій з ID \`${driverId}\` вже в списку.`, { parse_mode: 'Markdown' });
+        }
+    }
+
+    /**
+     * /removedriver — видалити водія (тільки адмін)
+     */
+    handleRemoveDriver(msg, args) {
+        if (!this.bot) return;
+        const chatId = msg.chat.id;
+
+        if (!this.isAdmin(chatId)) {
+            this.bot.sendMessage(chatId, '🚫 Тільки адміністратор може видаляти водіїв.');
+            return;
+        }
+
+        const driverId = parseInt((args || '').trim());
+        if (isNaN(driverId)) {
+            this.bot.sendMessage(chatId, '❌ Вкажіть ID водія: `/removedriver 123456789`', { parse_mode: 'Markdown' });
+            return;
+        }
+
+        const result = this.storage.removeDriver(driverId);
+        if (result.success) {
+            this.bot.sendMessage(chatId, `✅ Водій *${result.driver.name}* (ID: \`${driverId}\`) видалений зі списку.`, { parse_mode: 'Markdown' });
+        } else {
+            this.bot.sendMessage(chatId, `❌ Водій з ID \`${driverId}\` не знайдений в списку.`, { parse_mode: 'Markdown' });
+        }
+    }
+
+    /**
+     * /drivers — список авторизованих водіїв
+     */
+    handleListDrivers(msg) {
+        if (!this.bot) return;
+        const chatId = msg.chat.id;
+        const drivers = this.storage.getDrivers();
+
+        if (drivers.length === 0) {
+            this.bot.sendMessage(chatId,
+                '👥 *Список водіїв порожній*\n\n' +
+                '⚠️ Зараз талони доступні _всім_. Додайте водія, щоб обмежити доступ:\n' +
+                '`/adddriver 123456789 Ім\'я`',
+                { parse_mode: 'Markdown' }
+            );
+            return;
+        }
+
+        let text = '👥 *Авторизовані водії:*\n\n';
+        drivers.forEach((d, i) => {
+            text += `${i + 1}. *${d.name}* — \`${d.chatId}\`\n`;
+        });
+        text += `\n_Всього: ${drivers.length}_`;
+
+        this.bot.sendMessage(chatId, text, { parse_mode: 'Markdown' });
     }
 
     /**

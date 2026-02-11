@@ -17,7 +17,8 @@ class CompanyStorage {
             fuel: [],
             expenses: [],
             reminders: [],
-            coupons: []
+            coupons: [],
+            authorizedDrivers: [] // [{chatId, name, addedAt}]
         };
         this.load();
     }
@@ -149,6 +150,36 @@ class CompanyStorage {
 
     findCarById(id) {
         return this.data.cars.find(car => car.id === id);
+    }
+
+    // ========== AUTHORIZED DRIVERS ==========
+
+    addDriver(chatId, name) {
+        if (!this.data.authorizedDrivers) this.data.authorizedDrivers = [];
+        const existing = this.data.authorizedDrivers.find(d => d.chatId === chatId);
+        if (existing) return { success: false, reason: 'already_exists' };
+        const driver = { chatId, name: name || 'Водій', addedAt: new Date().toISOString() };
+        this.data.authorizedDrivers.push(driver);
+        this.save();
+        return { success: true, driver };
+    }
+
+    removeDriver(chatId) {
+        if (!this.data.authorizedDrivers) return { success: false };
+        const idx = this.data.authorizedDrivers.findIndex(d => d.chatId === chatId);
+        if (idx === -1) return { success: false, reason: 'not_found' };
+        const removed = this.data.authorizedDrivers.splice(idx, 1)[0];
+        this.save();
+        return { success: true, driver: removed };
+    }
+
+    getDrivers() {
+        return this.data.authorizedDrivers || [];
+    }
+
+    isDriverAuthorized(chatId) {
+        if (!this.data.authorizedDrivers || this.data.authorizedDrivers.length === 0) return true; // Якщо список порожній — дозволяємо всім
+        return this.data.authorizedDrivers.some(d => d.chatId === chatId);
     }
 
     addCar(carData) {
