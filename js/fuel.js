@@ -206,11 +206,16 @@ const Fuel = {
         const tbody = document.getElementById('fuelTableBody');
 
         if (records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="empty-message">Немає записів про заправки</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-message">Немає записів про заправки</td></tr>';
             return;
         }
 
-        tbody.innerHTML = records.map(record => `
+        // Сортуємо від найновіших до найстаріших
+        const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        tbody.innerHTML = sorted.map(record => {
+            const payLabel = record.paymentMethod === 'cash' ? '💵 Готівка' : '🎫 Талони';
+            return `
             <tr data-fuel-id="${record.id}">
                 <td>${this.formatDate(record.date)}</td>
                 <td>${Cars.getDisplayName(record.carId)}</td>
@@ -219,6 +224,7 @@ const Fuel = {
                 <td>${(record.liters * record.pricePerLiter).toFixed(2)} грн</td>
                 <td>${record.mileage.toLocaleString()}</td>
                 <td>${record.consumption > 0 ? record.consumption : '--'}</td>
+                <td>${payLabel}</td>
                 <td>
                     <div class="table-actions">
                         <button class="table-action-btn edit-fuel" title="Редагувати">✏️</button>
@@ -226,7 +232,7 @@ const Fuel = {
                     </div>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
 
         this.attachEventListeners();
     },
