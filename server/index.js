@@ -8,6 +8,7 @@ require('dotenv').config({ path: __dirname + '/.env' });
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const Auth = require('./auth');
 const { getStorage } = require('./storage');
 const BotManager = require('./botManager');
@@ -73,7 +74,8 @@ app.post('/api/auth/login', (req, res) => {
 
 // API: Реєстрація
 app.post('/api/auth/register', (req, res) => {
-    const { companyName, login, password, botToken } = req.body;
+    const { companyName, login, password } = req.body;
+    let { botToken } = req.body;
 
     if (!companyName || !login || !password) {
         return res.status(400).json({ success: false, error: 'Заповніть всі обов\'язкові поля' });
@@ -81,6 +83,12 @@ app.post('/api/auth/register', (req, res) => {
 
     if (password.length < 4) {
         return res.status(400).json({ success: false, error: 'Пароль має бути мінімум 4 символи' });
+    }
+
+    // Авто-присвоєння BOT_TOKEN з env якщо не вказано
+    if (!botToken && process.env.BOT_TOKEN) {
+        botToken = process.env.BOT_TOKEN;
+        console.log('🔑 Авто-присвоєно BOT_TOKEN з env');
     }
 
     const result = Auth.register({ companyName, login, password, botToken });
@@ -92,6 +100,20 @@ app.post('/api/auth/register', (req, res) => {
     // Запускаємо бота для нової компанії
     if (botToken) {
         BotManager.startBot(result.company.id, botToken);
+    }
+
+    // Авто-міграція старих даних
+    const oldDataFile = path.join(__dirname, 'data.json');
+    if (fs.existsSync(oldDataFile)) {
+        try {
+            const oldData = JSON.parse(fs.readFileSync(oldDataFile, 'utf-8'));
+            const storage = getStorage(result.company.id);
+            storage.importData(oldData);
+            fs.renameSync(oldDataFile, oldDataFile + '.migrated');
+            console.log('📦 Старі дані мігровано до нової компанії');
+        } catch (e) {
+            console.error('⚠️ Помилка міграції:', e.message);
+        }
     }
 
     // Автоматичний логін після реєстрації
@@ -135,8 +157,6 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '..')));
 
 // ========== MIGRATION (одноразова міграція старих даних) ==========
-
-const fs = require('fs');
 
 app.post('/api/migrate', (req, res) => {
     const oldDataFile = path.join(__dirname, 'data.json');
