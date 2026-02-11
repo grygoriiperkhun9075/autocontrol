@@ -23,13 +23,42 @@ app.use(express.json());
 // Ініціалізація
 Auth.init();
 
-// Авто-міграція BOT_TOKEN з env в першу компанію без токена
+// Авто-створення компанії якщо BOT_TOKEN є, але компаній немає
 if (process.env.BOT_TOKEN) {
     const companies = Auth.getAllCompanies();
-    const companyWithoutBot = companies.find(c => !c.botToken);
-    if (companyWithoutBot) {
-        Auth.updateBotToken(companyWithoutBot.id, process.env.BOT_TOKEN);
-        console.log(`🔑 BOT_TOKEN з env прив'язано до компанії "${companyWithoutBot.name}"`);
+    if (companies.length === 0) {
+        // Створюємо дефолтну компанію автоматично
+        const defaultPassword = process.env.ADMIN_PASSWORD || 'test1234';
+        const result = Auth.register({
+            companyName: process.env.COMPANY_NAME || 'AutoControl',
+            login: process.env.ADMIN_LOGIN || 'admin',
+            password: defaultPassword,
+            botToken: process.env.BOT_TOKEN
+        });
+        if (result.success) {
+            console.log(`🏢 Авто-створено компанію "${result.company.name}" з BOT_TOKEN`);
+
+            // Авто-міграція старих даних
+            const oldDataFile = path.join(__dirname, 'data.json');
+            if (fs.existsSync(oldDataFile)) {
+                try {
+                    const oldData = JSON.parse(fs.readFileSync(oldDataFile, 'utf-8'));
+                    const storage = getStorage(result.company.id);
+                    storage.importData(oldData);
+                    fs.renameSync(oldDataFile, oldDataFile + '.migrated');
+                    console.log('📦 Старі дані мігровано автоматично');
+                } catch (e) {
+                    console.error('⚠️ Помилка міграції:', e.message);
+                }
+            }
+        }
+    } else {
+        // Якщо компанія є, але без токена — прив'язати
+        const companyWithoutBot = companies.find(c => !c.botToken);
+        if (companyWithoutBot) {
+            Auth.updateBotToken(companyWithoutBot.id, process.env.BOT_TOKEN);
+            console.log(`🔑 BOT_TOKEN прив'язано до "${companyWithoutBot.name}"`);
+        }
     }
 }
 
