@@ -21,7 +21,22 @@ class AutoControlBot {
 
         this.bot = new TelegramBot(token, { polling: true });
         this.setupHandlers();
+        this.setupMenu();
         console.log('🤖 Telegram бот запущено!');
+    }
+
+    /**
+     * Меню команд (кнопка в лівому нижньому куті чату)
+     */
+    setupMenu() {
+        if (!this.bot) return;
+        this.bot.setMyCommands([
+            { command: 'start', description: '🚀 Почати роботу' },
+            { command: 'help', description: '❓ Допомога' },
+            { command: 'coupon', description: '🎫 Отримати талон OKKO (PDF)' },
+            { command: 'talons', description: '💰 Купити талони (літри + ціна)' },
+            { command: 'stats', description: '📊 Статистика' },
+        ]).catch(err => console.error('❌ Помилка встановлення меню:', err.message));
     }
 
     /**
