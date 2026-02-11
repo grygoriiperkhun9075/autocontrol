@@ -62,16 +62,87 @@ class CompanyStorage {
         return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
 
+    /**
+     * Видалення дублікатів авто з однаковими номерами
+     * Об'єднує записи заправок з дублікатів у головне авто
+     */
+    deduplicateCars() {
+        const seen = new Map(); // normalizedPlate -> car
+        const duplicates = [];
+
+        for (const car of this.data.cars) {
+            const norm = CompanyStorage.normalizePlate(car.plate || '');
+            if (!norm) continue;
+
+            if (seen.has(norm)) {
+                // Дублікат — переносимо заправки на головне авто
+                const mainCar = seen.get(norm);
+                const fuelForDup = this.data.fuel.filter(f => f.carId === car.id);
+                fuelForDup.forEach(f => { f.carId = mainCar.id; });
+
+                // Оновлюємо пробіг якщо в дублікаті більший
+                if ((parseInt(car.mileage) || 0) > (parseInt(mainCar.mileage) || 0)) {
+                    mainCar.mileage = parseInt(car.mileage) || 0;
+                }
+
+                // Нормалізуємо номер головного авто
+                mainCar.plate = CompanyStorage.formatPlate(norm);
+
+                duplicates.push(car.id);
+                console.log(`🔄 Об'єднано дублікат "${car.plate}" → "${mainCar.plate}" (${fuelForDup.length} заправок)`);
+            } else {
+                seen.set(norm, car);
+            }
+        }
+
+        if (duplicates.length > 0) {
+            this.data.cars = this.data.cars.filter(c => !duplicates.includes(c.id));
+            // Нормалізуємо номери всіх авто
+            this.data.cars.forEach(car => {
+                const norm = CompanyStorage.normalizePlate(car.plate || '');
+                car.plate = CompanyStorage.formatPlate(norm);
+            });
+            this.save();
+            console.log(`✅ Видалено ${duplicates.length} дублікатів авто`);
+        }
+    }
+
     // ========== CARS ==========
+
+    /**
+     * Нормалізація номера авто: кирилиця→латиниця, uppercase, без пробілів
+     * "вс 9348 тм" → "BC9348TM"
+     */
+    static normalizePlate(plate) {
+        // Таблиця кирилиця → латиниця (візуально однакові літери)
+        const cyrToLat = {
+            'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H',
+            'І': 'I', 'К': 'K', 'М': 'M', 'О': 'O', 'Р': 'P',
+            'Т': 'T', 'Х': 'X'
+        };
+        return plate
+            .replace(/\s+/g, '')
+            .toUpperCase()
+            .split('')
+            .map(ch => cyrToLat[ch] || ch)
+            .join('');
+    }
+
+    /**
+     * Форматування номера для відображення: "BC9348TM" → "BC 9348 TM"
+     */
+    static formatPlate(normalizedPlate) {
+        return normalizedPlate.replace(/^([A-Z]{2})(\d{4})([A-Z]{2})$/, '$1 $2 $3') || normalizedPlate;
+    }
 
     getCars() {
         return this.data.cars;
     }
 
     findCarByPlate(plate) {
-        const normalizedPlate = plate.replace(/\s+/g, '').toUpperCase();
+        const normalizedPlate = CompanyStorage.normalizePlate(plate);
         return this.data.cars.find(car => {
-            const carPlate = (car.plate || '').replace(/\s+/g, '').toUpperCase();
+            const carPlate = CompanyStorage.normalizePlate(car.plate || '');
             return carPlate === normalizedPlate;
         });
     }
@@ -81,10 +152,9 @@ class CompanyStorage {
     }
 
     addCar(carData) {
-        // Нормалізація номера: прибираємо зайві пробіли, uppercase
-        const rawPlate = (carData.plate || '').replace(/\s+/g, '').toUpperCase();
-        // Форматуємо як "XX 1234 XX" якщо відповідає українському формату
-        const plateFormatted = rawPlate.replace(/^([A-ZА-ЯІЇЄ]{2})(\d{4})([A-ZА-ЯІЇЄ]{2})$/, '$1 $2 $3') || rawPlate;
+        // Нормалізація номера через єдину таблицю кирилиця→латиниця
+        const normalized = CompanyStorage.normalizePlate(carData.plate || '');
+        const plateFormatted = CompanyStorage.formatPlate(normalized);
 
         const car = {
             id: this.generateId(),
@@ -219,6 +289,8 @@ class CompanyStorage {
         if (newData.expenses) this.data.expenses = newData.expenses;
         if (newData.reminders) this.data.reminders = newData.reminders;
         if (newData.coupons) this.data.coupons = newData.coupons;
+        // Дедуплікація після імпорту всіх даних
+        this.deduplicateCars();
         this.save();
     }
 }
