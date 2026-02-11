@@ -22,6 +22,16 @@ app.use(express.json());
 // Ініціалізація
 Auth.init();
 
+// Авто-міграція BOT_TOKEN з env в першу компанію без токена
+if (process.env.BOT_TOKEN) {
+    const companies = Auth.getAllCompanies();
+    const companyWithoutBot = companies.find(c => !c.botToken);
+    if (companyWithoutBot) {
+        Auth.updateBotToken(companyWithoutBot.id, process.env.BOT_TOKEN);
+        console.log(`🔑 BOT_TOKEN з env прив'язано до компанії "${companyWithoutBot.name}"`);
+    }
+}
+
 // ========== AUTH ROUTES (без авторизації) ==========
 
 // Сторінка логіну
@@ -274,6 +284,26 @@ app.post('/api/sync', (req, res) => {
 // Головна сторінка
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
+
+// ========== SETTINGS ==========
+
+app.post('/api/settings/bot-token', (req, res) => {
+    const { botToken } = req.body;
+    if (!botToken) {
+        return res.status(400).json({ error: 'Токен не вказано' });
+    }
+
+    // Зупинити старого бота
+    BotManager.stopBot(req.companyId);
+
+    // Оновити токен
+    Auth.updateBotToken(req.companyId, botToken);
+
+    // Запустити нового бота
+    BotManager.startBot(req.companyId, botToken);
+
+    res.json({ success: true, message: 'Бот запущено!' });
 });
 
 // Запуск ботів для всіх компаній

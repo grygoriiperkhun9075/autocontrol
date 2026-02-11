@@ -158,6 +158,17 @@ class Auth {
     }
 
     /**
+     * Оновлення бот-токена компанії
+     */
+    static updateBotToken(companyId, botToken) {
+        const company = this.companies.find(c => c.id === companyId);
+        if (!company) return false;
+        company.botToken = botToken;
+        this.saveCompanies();
+        return true;
+    }
+
+    /**
      * Парсинг cookie з заголовка
      */
     static parseCookies(cookieHeader) {
