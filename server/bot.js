@@ -184,7 +184,9 @@ AA 1234 BB
         if (!msg.text || !this.bot) return;
 
         const chatId = msg.chat.id;
-        const parsed = MessageParser.parse(msg.text);
+        // Перевірка на примусове підтвердження ("ок")
+        const forceOverride = /\bок\b/i.test(msg.text);
+        const parsed = MessageParser.parse(msg.text.replace(/\bок\b/gi, '').trim());
 
         if (!parsed.parsed) {
             this.bot.sendMessage(chatId, `
@@ -215,6 +217,38 @@ AA 1234 BB
             }
             this.bot.sendMessage(chatId, `❌ *Авто \`${parsed.plate}\` не знайдено!*\n\nПеревірте правильність номера.${availableList}`, { parse_mode: 'Markdown' });
             return;
+        }
+
+        // ========== ВАЛІДАЦІЯ ПРОБІГУ ==========
+        const lastMileage = parseInt(car.mileage) || 0;
+        const newMileage = parseInt(parsed.mileage) || 0;
+
+        if (newMileage > 0 && lastMileage > 0) {
+            // ❌ Пробіг менший за попередній — завжди блокуємо
+            if (newMileage < lastMileage) {
+                this.bot.sendMessage(chatId, `❌ *Пробіг ${newMileage.toLocaleString()} км менший за попередній ${lastMileage.toLocaleString()} км!*\n\nПеревірте правильність введеного пробігу.\n📏 Останній відомий пробіг: *${lastMileage.toLocaleString()} км*`, { parse_mode: 'Markdown' });
+                return;
+            }
+
+            // ⚠️ Перевірка витрати — можна обійти через "ок"
+            if (!forceOverride) {
+                const distance = newMileage - lastMileage;
+                const liters = parseFloat(parsed.liters) || 0;
+
+                if (liters > 0 && distance > 0) {
+                    const impliedConsumption = (liters / distance) * 100;
+
+                    if (impliedConsumption < 3) {
+                        this.bot.sendMessage(chatId, `⚠️ *Можлива помилка в пробігу!*\n\n📏 Попередній: ${lastMileage.toLocaleString()} км\n📏 Введений: ${newMileage.toLocaleString()} км\n📐 Різниця: *${distance.toLocaleString()} км*\n⛽ Пальне: ${liters} л\n📊 Витрата: *${impliedConsumption.toFixed(1)} л/100км* — занадто мало!\n\nЯкщо все вірно, надішліть ще раз з додаванням слова *ок*`, { parse_mode: 'Markdown' });
+                        return;
+                    }
+
+                    if (impliedConsumption > 30) {
+                        this.bot.sendMessage(chatId, `⚠️ *Можлива помилка в пробігу!*\n\n📏 Попередній: ${lastMileage.toLocaleString()} км\n📏 Введений: ${newMileage.toLocaleString()} км\n📐 Різниця: *${distance.toLocaleString()} км*\n⛽ Пальне: ${liters} л\n📊 Витрата: *${impliedConsumption.toFixed(1)} л/100км* — занадто багато!\n\nЯкщо все вірно, надішліть ще раз з додаванням слова *ок*`, { parse_mode: 'Markdown' });
+                        return;
+                    }
+                }
+            }
         }
 
         // Додаємо заправку
