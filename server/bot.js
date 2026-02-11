@@ -5,6 +5,7 @@
 
 const TelegramBot = require('node-telegram-bot-api');
 const MessageParser = require('./parser');
+const CouponPDF = require('./coupon-pdf');
 
 class AutoControlBot {
     constructor(token, storage) {
@@ -52,6 +53,7 @@ AA 1234 BB
 /cars - Список авто
 /stats - Статистика
 /talons - Купівля талонів
+/coupon - Отримати PDF-талон
             `.trim(), { parse_mode: 'Markdown' });
         });
 
@@ -155,6 +157,16 @@ AA 1234 BB
             this.bot.sendMessage(chatId, reply, { parse_mode: 'Markdown' });
         });
 
+        // Команда /coupon - отримати PDF-талон
+        this.bot.onText(/\/coupon$/, (msg) => {
+            this.handleCouponPDFRequest(msg);
+        });
+
+        this.bot.onText(/\/coupon\s+(\d+)/, (msg, match) => {
+            const liters = parseInt(match[1]);
+            this.generateAndSendCouponPDF(msg.chat.id, liters);
+        });
+
         // Обробка текстових повідомлень
         this.bot.on('message', (msg) => {
             // Ігноруємо команди
@@ -177,9 +189,15 @@ AA 1234 BB
             }
         });
 
-        // Обробка натискань на кнопки (спосіб оплати)
+        // Обробка натискань на кнопки (спосіб оплати / талони)
         this.bot.on('callback_query', (query) => {
-            this.handlePaymentCallback(query);
+            if (query.data.startsWith('coupon_')) {
+                const liters = parseInt(query.data.replace('coupon_', ''));
+                this.bot.answerCallbackQuery(query.id);
+                this.generateAndSendCouponPDF(query.message.chat.id, liters, query.message.message_id);
+            } else {
+                this.handlePaymentCallback(query);
+            }
         });
     }
 
@@ -355,6 +373,114 @@ AA 1234 BB
             .filter(f => f.paymentMethod !== 'cash')
             .reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0);
         return totalPurchased - totalUsed;
+    }
+
+    /**
+     * Обробка запиту на PDF-талон — показує доступні номінали
+     */
+    handleCouponPDFRequest(msg) {
+        if (!this.bot) return;
+        const chatId = msg.chat.id;
+        const balance = this.getCouponBalance();
+
+        if (balance <= 0) {
+            this.bot.sendMessage(chatId, `❌ *Немає доступних талонів!*\n\n🎫 Баланс: *${balance.toFixed(1)} л*\n\nСпочатку додайте талони: \`/talons 200 52.50\``, { parse_mode: 'Markdown' });
+            return;
+        }
+
+        // Формуємо кнопки з доступними номіналами
+        const denominations = [10, 20, 30, 50, 100];
+        const available = denominations.filter(d => d <= balance);
+
+        if (available.length === 0) {
+            // Якщо баланс менше 10 — дозволяємо весь залишок
+            available.push(Math.floor(balance));
+        }
+
+        // Створюємо ряди кнопок по 3 в ряд
+        const keyboard = [];
+        let row = [];
+        for (const nom of available) {
+            row.push({ text: `⛽ ${nom} л`, callback_data: `coupon_${nom}` });
+            if (row.length === 3) {
+                keyboard.push(row);
+                row = [];
+            }
+        }
+        if (row.length > 0) keyboard.push(row);
+
+        this.bot.sendMessage(chatId, `🎫 *Отримати PDF-талон*\n\n📊 Баланс: *${balance.toFixed(1)} л*\n\nОберіть номінал:`, {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: keyboard
+            }
+        });
+    }
+
+    /**
+     * Генерація і відправка PDF-талону
+     */
+    async generateAndSendCouponPDF(chatId, liters, messageId = null) {
+        if (!this.bot) return;
+
+        const balance = this.getCouponBalance();
+
+        if (liters > balance) {
+            this.bot.sendMessage(chatId, `❌ *Недостатньо талонів!*\n\n🎫 Запитано: ${liters} л\n📊 Баланс: ${balance.toFixed(1)} л`, { parse_mode: 'Markdown' });
+            return;
+        }
+
+        // Оновлюємо повідомлення
+        if (messageId) {
+            this.bot.editMessageText(`⏳ *Генерую PDF-талон на ${liters} л...*`, {
+                chat_id: chatId,
+                message_id: messageId,
+                parse_mode: 'Markdown'
+            }).catch(() => { });
+        }
+
+        try {
+            // Генеруємо унікальний номер талону
+            const couponNumber = Date.now().toString().slice(-8);
+            const today = new Date();
+            const validUntil = new Date(today);
+            validUntil.setMonth(validUntil.getMonth() + 1);
+
+            const dateStr = today.toLocaleDateString('uk-UA');
+            const validStr = validUntil.toLocaleDateString('uk-UA');
+
+            const pdfBuffer = await CouponPDF.generate({
+                liters: liters,
+                companyName: 'AutoControl',
+                couponNumber: couponNumber,
+                date: dateStr,
+                validUntil: validStr,
+                fuelType: 'ДП / А-95',
+                station: 'OKKO'
+            });
+
+            // Відправляємо PDF
+            await this.bot.sendDocument(chatId, pdfBuffer, {
+                caption: `🎫 Талон на *${liters} л* пального\n📅 Дійсний до: ${validStr}\n🔢 Номер: #${couponNumber}`,
+                parse_mode: 'Markdown'
+            }, {
+                filename: `coupon_${liters}L_${couponNumber}.pdf`,
+                contentType: 'application/pdf'
+            });
+
+            // Оновлюємо повідомлення з кнопками
+            if (messageId) {
+                this.bot.editMessageText(`✅ *PDF-талон на ${liters} л відправлено!*\n\n📊 Залишок: *${balance.toFixed(1)} л*`, {
+                    chat_id: chatId,
+                    message_id: messageId,
+                    parse_mode: 'Markdown'
+                }).catch(() => { });
+            }
+
+        } catch (error) {
+            console.error('❌ Помилка генерації PDF:', error);
+            this.bot.sendMessage(chatId, '❌ Помилка генерації PDF. Спробуйте ще раз.');
+        }
     }
 
     /**
