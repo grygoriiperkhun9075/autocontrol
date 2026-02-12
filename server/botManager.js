@@ -16,9 +16,15 @@ class BotManager {
     static initAll() {
         const companies = Auth.getAllCompanies();
         let started = 0;
+        const usedTokens = new Set(); // Запобігаємо запуску кількох ботів з однаковим токеном
 
         for (const company of companies) {
             if (company.botToken) {
+                if (usedTokens.has(company.botToken)) {
+                    console.log(`⚠️ [${company.id}] Пропущено — токен вже використовується іншою компанією`);
+                    continue;
+                }
+                usedTokens.add(company.botToken);
                 this.startBot(company.id, company.botToken);
                 started++;
             }
