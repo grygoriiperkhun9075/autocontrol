@@ -94,9 +94,11 @@ class CouponPDF {
             .lineWidth(1).strokeColor('#E0E0E0').stroke();
 
         // ===== QR-код =====
-        if (options.qrData) {
+        // Використовуємо qrData або номер талону як дані для QR
+        const qrContent = options.qrData || options.couponNumber;
+        if (qrContent) {
             try {
-                const qrBuffer = await QRCode.toBuffer(options.qrData, {
+                const qrBuffer = await QRCode.toBuffer(qrContent, {
                     width: 160,
                     margin: 1,
                     errorCorrectionLevel: 'M'
@@ -108,7 +110,6 @@ class CouponPDF {
                     .text('QR-код недоступний', 30, 320, { align: 'center', width: width - 60 });
             }
         } else {
-            // Якщо немає QR-даних — показуємо номер талону великим
             doc.fontSize(12).fillColor('#333').font('Bold')
                 .text('Номер талону:', 30, 270, { align: 'center', width: width - 60 });
             doc.fontSize(14).fillColor('#00843D').font('Bold')
