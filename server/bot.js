@@ -19,7 +19,23 @@ class AutoControlBot {
             return;
         }
 
-        this.bot = new TelegramBot(token, { polling: true });
+        this.bot = new TelegramBot(token, {
+            polling: {
+                interval: 300,
+                autoStart: true,
+                params: { timeout: 10 }
+            }
+        });
+
+        // Обробка помилок polling (409 Conflict — два екземпляри бота)
+        this.bot.on('polling_error', (error) => {
+            if (error.code === 'ETELEGRAM' && error.message.includes('409')) {
+                console.warn('⚠️ Bot polling 409 conflict — можливо працює інший екземпляр. Чекаю 5с...');
+            } else {
+                console.error('❌ Bot polling error:', error.message);
+            }
+        });
+
         this.setupHandlers();
         this.setupMenu();
         console.log('🤖 Telegram бот запущено!');
