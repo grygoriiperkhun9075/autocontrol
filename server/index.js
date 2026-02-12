@@ -392,3 +392,20 @@ app.listen(PORT, () => {
 ╚════════════════════════════════════════════╝
     `);
 });
+
+// ========== Graceful Shutdown ==========
+// Зупиняємо всі боти перед завершенням процесу
+// (важливо для Railway — при новому деплої старий процес отримує SIGTERM)
+function gracefulShutdown(signal) {
+    console.log(`\n🛑 Отримано ${signal}. Зупиняємо ботів...`);
+    const Auth = require('./auth');
+    const companies = Auth.getAllCompanies();
+    for (const company of companies) {
+        BotManager.stopBot(company.id);
+    }
+    console.log('✅ Всі боти зупинені. Завершення процесу.');
+    process.exit(0);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

@@ -36,9 +36,6 @@ class AutoControlBot {
             { command: 'coupon', description: '🎫 Отримати талон OKKO (PDF)' },
             { command: 'talons', description: '💰 Купити талони (літри + ціна)' },
             { command: 'stats', description: '📊 Статистика' },
-            { command: 'drivers', description: '👥 Список авторизованих водіїв' },
-            { command: 'adddriver', description: '➕ Додати водія (адмін)' },
-            { command: 'removedriver', description: '➖ Видалити водія (адмін)' },
         ]).catch(err => console.error('❌ Помилка встановлення меню:', err.message));
     }
 
