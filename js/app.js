@@ -127,6 +127,7 @@ const App = {
             'cars': 'Автомобілі',
             'fuel': 'Заправки',
             'coupons': 'Талони',
+            'drivers': 'Водії',
             'expenses': 'Витрати',
             'reminders': 'Нагадування',
             'statistics': 'Статистика'
@@ -163,6 +164,9 @@ const App = {
                 break;
             case 'coupons':
                 Coupons.renderSection(this.currentPeriod);
+                break;
+            case 'drivers':
+                Drivers.renderSection();
                 break;
             case 'expenses':
                 Expenses.renderTable(carId);
@@ -255,6 +259,9 @@ const App = {
             Expenses.openAddModal();
         });
         document.getElementById('addCouponBtn').addEventListener('click', () => Coupons.openAddModal());
+        document.getElementById('addDriverBtn').addEventListener('click', () => {
+            document.getElementById('driverModal').classList.add('active');
+        });
         document.getElementById('addReminderBtn').addEventListener('click', () => {
             if (Cars.getAll().length === 0) {
                 alert('Спочатку додайте автомобіль');

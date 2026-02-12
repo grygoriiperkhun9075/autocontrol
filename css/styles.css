@@ -857,6 +857,17 @@ body::before {
     background: #dc2626;
 }
 
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+.drivers-tables {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
 /* ===== Modals ===== */
 .modal {
     display: none;

@@ -292,6 +292,28 @@ app.post('/api/expenses', (req, res) => {
     res.json(expense);
 });
 
+// ========== DRIVERS (ВОДІЇ) ==========
+
+app.get('/api/drivers', (req, res) => {
+    res.json(req.storage.getDrivers());
+});
+
+app.post('/api/drivers', (req, res) => {
+    const { chatId, name } = req.body;
+    if (!chatId) return res.status(400).json({ error: 'chatId обов\'язковий' });
+    const result = req.storage.addDriver(parseInt(chatId) || chatId, name || 'Водій');
+    res.json(result);
+});
+
+app.delete('/api/drivers/:chatId', (req, res) => {
+    const result = req.storage.removeDriver(parseInt(req.params.chatId) || req.params.chatId);
+    res.json(result);
+});
+
+app.get('/api/drivers/coupon-usage', (req, res) => {
+    res.json(req.storage.getDriverCouponUsage());
+});
+
 // ========== COUPONS (ТАЛОНИ) ==========
 
 app.get('/api/coupons', (req, res) => {

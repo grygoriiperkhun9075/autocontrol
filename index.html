@@ -42,6 +42,10 @@
                     <span class="nav-icon">🎫</span>
                     <span class="nav-text">Талони</span>
                 </button>
+                <button class="nav-item" data-section="drivers">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-text">Водії</span>
+                </button>
                 <button class="nav-item" data-section="expenses">
                     <span class="nav-icon">💰</span>
                     <span class="nav-text">Витрати</span>
@@ -269,6 +273,79 @@
                                     </tr>
                                 </thead>
                                 <tbody id="usageTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Drivers Section -->
+            <section class="content-section" id="section-drivers">
+                <div class="section-header">
+                    <h2>👥 Водії</h2>
+                    <button class="btn btn-primary" id="addDriverBtn">
+                        <span>+</span> Додати водія
+                    </button>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="driversCount">0</span>
+                            <span class="stat-label">Водіїв</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⛽</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="driversCouponLiters">0</span>
+                            <span class="stat-label">Літрів по талонах</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔄</div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="driversCouponRefills">0</span>
+                            <span class="stat-label">Заправок по талонах</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="drivers-tables">
+                    <div class="coupon-table-section">
+                        <h3>📋 Список водіїв</h3>
+                        <div class="table-container">
+                            <table class="data-table" id="driversTable">
+                                <thead>
+                                    <tr>
+                                        <th>Ім'я</th>
+                                        <th>Chat ID</th>
+                                        <th>Додано</th>
+                                        <th>Дії</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="driversTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="coupon-table-section">
+                        <h3>🎫 Використання талонів</h3>
+                        <div class="table-container">
+                            <table class="data-table" id="driversUsageTable">
+                                <thead>
+                                    <tr>
+                                        <th>Водій</th>
+                                        <th>Автомобіль</th>
+                                        <th>Літри</th>
+                                        <th>Заправок</th>
+                                        <th>Остання дата</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="driversUsageBody">
                                 </tbody>
                             </table>
                         </div>
@@ -598,6 +675,31 @@
         </div>
     </div>
 
+    <!-- Modal: Add Driver -->
+    <div class="modal" id="driverModal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3>Додати водія</h3>
+                <button class="modal-close" data-close="driverModal">&times;</button>
+            </div>
+            <form id="driverForm" onsubmit="Drivers.addDriver(event)">
+                <div class="form-group">
+                    <label for="driverChatId">Chat ID *</label>
+                    <input type="text" id="driverChatId" required placeholder="1234567890">
+                    <small style="color: #999;">Водій отримає Chat ID надіславши /start боту</small>
+                </div>
+                <div class="form-group">
+                    <label for="driverName">Ім'я водія</label>
+                    <input type="text" id="driverName" placeholder="Іван Петренко">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-close="driverModal">Скасувати</button>
+                    <button type="submit" class="btn btn-primary">Додати</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/storage.js"></script>
     <script src="js/cars.js"></script>
@@ -605,6 +707,7 @@
     <script src="js/coupons.js"></script>
     <script src="js/expenses.js"></script>
     <script src="js/reminders.js"></script>
+    <script src="js/drivers.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/export.js"></script>
     <script src="js/app.js"></script>

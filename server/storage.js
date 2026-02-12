@@ -182,6 +182,42 @@ class CompanyStorage {
         return this.data.authorizedDrivers.some(d => d.chatId === chatId);
     }
 
+    /**
+     * Використання талонів по водіях
+     * Повертає масив: { driverChatId, driverName, carId, carPlate, liters, count, lastDate }
+     */
+    getDriverCouponUsage() {
+        const couponFuel = (this.data.fuel || []).filter(f => f.paymentMethod === 'coupon');
+        const drivers = this.data.authorizedDrivers || [];
+        const cars = this.data.cars || [];
+
+        // Групуємо по водій + авто
+        const usageMap = {};
+        for (const f of couponFuel) {
+            const key = `${f.driverChatId || 'unknown'}_${f.carId}`;
+            if (!usageMap[key]) {
+                const car = cars.find(c => c.id === f.carId);
+                const driver = drivers.find(d => String(d.chatId) === String(f.driverChatId));
+                usageMap[key] = {
+                    driverChatId: f.driverChatId || null,
+                    driverName: f.driverName || driver?.name || 'Невідомий',
+                    carId: f.carId,
+                    carPlate: car ? `${car.brand} ${car.model} (${car.plate || ''})` : f.carId,
+                    liters: 0,
+                    count: 0,
+                    lastDate: null
+                };
+            }
+            usageMap[key].liters += f.liters || 0;
+            usageMap[key].count += 1;
+            if (!usageMap[key].lastDate || f.date > usageMap[key].lastDate) {
+                usageMap[key].lastDate = f.date;
+            }
+        }
+
+        return Object.values(usageMap).sort((a, b) => (b.lastDate || '').localeCompare(a.lastDate || ''));
+    }
+
     addCar(carData) {
         // Нормалізація номера через єдину таблицю кирилиця→латиниця
         const normalized = CompanyStorage.normalizePlate(carData.plate || '');
