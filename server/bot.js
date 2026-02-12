@@ -328,7 +328,9 @@ AA 1234 BB
             mileage: parsed.mileage,
             station: parsed.station,
             fullTank: parsed.fullTank,
-            parsed: parsed
+            parsed: parsed,
+            driverChatId: chatId,
+            driverName: [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ') || 'Водій'
         });
 
         const summary = `🚗 *${car.plate}*\n📏 Пробіг: ${parsed.mileage?.toLocaleString() || '—'} км\n⛽ ${parsed.liters} л по ${parsed.pricePerLiter} грн\n💰 Сума: ${(parsed.liters * parsed.pricePerLiter).toFixed(2)} грн`;
@@ -378,7 +380,9 @@ AA 1234 BB
             mileage: pending.mileage,
             station: pending.station,
             fullTank: pending.fullTank,
-            paymentMethod: paymentMethod
+            paymentMethod: paymentMethod,
+            driverChatId: pending.driverChatId,
+            driverName: pending.driverName
         });
 
         const payLabel = paymentMethod === 'cash' ? '💵 Готівка' : '🎫 Талони';

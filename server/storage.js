@@ -264,6 +264,8 @@ class CompanyStorage {
             paymentMethod: fuelData.paymentMethod || 'coupon',
             consumption: this.calculateConsumption(fuelData.carId, mileage, liters),
             source: fuelData.source || 'telegram',
+            driverChatId: fuelData.driverChatId || null,
+            driverName: fuelData.driverName || null,
             createdAt: new Date().toISOString()
         };
         this.data.fuel.push(fuel);
