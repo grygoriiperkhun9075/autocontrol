@@ -49,7 +49,7 @@ class AutoControlBot {
         this.bot.setMyCommands([
             { command: 'start', description: '🚀 Почати роботу' },
             { command: 'help', description: '❓ Допомога' },
-            { command: 'coupon', description: '🎫 Отримати талон OKKO (QR-код)' },
+            { command: 'coupon', description: '🎫 Отримати талон OKKO (PDF)' },
             { command: 'talons', description: '💰 Купити талони (літри + ціна)' },
             { command: 'stats', description: '📊 Статистика' },
         ]).catch(err => console.error('❌ Помилка встановлення меню:', err.message));
@@ -88,7 +88,7 @@ AA 1234 BB
 /cars - Список авто
 /stats - Статистика
 /talons - Купівля талонів
-/coupon - Отримати QR-код талону
+/coupon - Отримати PDF-талон зі штрих-кодом
             `.trim(), { parse_mode: 'Markdown' });
         });
 
@@ -507,7 +507,7 @@ AA 1234 BB
     }
 
     /**
-     * Генерація і відправка талону — QR-код як фото (замість PDF)
+     * Генерація і відправка PDF-талону зі штрих-кодом Code128 (як оригінал OKKO)
      */
     async generateAndSendCouponPDF(chatId, liters, messageId = null) {
         if (!this.bot) return;
@@ -532,35 +532,26 @@ AA 1234 BB
                     return;
                 }
 
-                // Дані для QR-коду
-                const qrContent = coupon.qr || coupon.number;
-                if (!qrContent) {
-                    this.bot.sendMessage(chatId, '❌ QR-код недоступний для цього талону.');
-                    return;
-                }
-
-                // Генеруємо QR-код як PNG-буфер (високий дозвіл для зчитування)
-                const QRCode = require('qrcode');
-                const qrBuffer = await QRCode.toBuffer(qrContent, {
-                    width: 400,
-                    margin: 2,
-                    errorCorrectionLevel: 'H',
-                    color: { dark: '#000000', light: '#ffffff' }
+                // Генеруємо PDF зі штрих-кодом Code128 (як оригінал OKKO)
+                const pdfBuffer = await CouponPDF.generate({
+                    liters: coupon.nominal,
+                    couponNumber: coupon.number,
+                    qrData: coupon.qr || '',  // QR якщо є
+                    validUntil: coupon.validTo,
+                    fuelType: coupon.fuelType || 'Дизельне паливо'
                 });
 
                 // Форматуємо номер для display
                 const formattedNum = CouponPDF._formatNumber ?
                     CouponPDF._formatNumber(coupon.number) : coupon.number;
 
-                // Відправляємо QR як фото (легше показати на заправці)
-                const caption = `🎫 *Талон OKKO на ${coupon.nominal} л*\n⛽ ${coupon.fuelType || 'Дизельне паливо'}\n📅 Дійсний до: ${coupon.validTo}\n🔢 ${formattedNum}\n\n_Покажіть QR-код касиру на АЗС OKKO_`;
-
-                await this.bot.sendPhoto(chatId, qrBuffer, {
-                    caption: caption,
+                // Відправляємо PDF
+                await this.bot.sendDocument(chatId, pdfBuffer, {
+                    caption: `🎫 *Талон OKKO на ${coupon.nominal} л*\n⛽ ${coupon.fuelType || 'Дизельне паливо'}\n📅 Дійсний до: ${coupon.validTo}\n🔢 ${formattedNum}\n\n_Покажіть штрих-код касиру на АЗС OKKO_`,
                     parse_mode: 'Markdown'
                 }, {
-                    filename: `OKKO_${coupon.nominal}L.png`,
-                    contentType: 'image/png'
+                    filename: `OKKO_${coupon.nominal}L_${coupon.number.slice(-4)}.pdf`,
+                    contentType: 'application/pdf'
                 });
 
                 // Оновлюємо повідомлення

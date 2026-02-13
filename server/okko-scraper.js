@@ -272,7 +272,7 @@ class OkkoScraper {
             productId: c.product_id || c.productId || '',
             validFrom: c.activate_date || c.activateDate || c.validFrom || '',
             validTo: c.exp_date || c.expDate || c.validTo || c.expire_date || '',
-            qr: c.qr || c.qrCode || c.barcode || '',
+            qr: c.qr_string || c.qr || c.qrCode || c.barcode || '',
             status: c.card_status || c.cardStatus || c.status || 'CHST0',
             assignToContract: c.assign_to_contract_in_svfe || false
         })).filter(c => c.number && c.nominal > 0);
