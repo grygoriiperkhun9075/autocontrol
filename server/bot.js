@@ -532,11 +532,11 @@ AA 1234 BB
                     return;
                 }
 
-                // Генеруємо PDF зі штрих-кодом Code128 (як оригінал OKKO)
+                // Генеруємо PDF ідентичний оригіналу OKKO
                 const pdfBuffer = await CouponPDF.generate({
                     liters: coupon.nominal,
                     couponNumber: coupon.number,
-                    qrData: coupon.qr || '',  // QR якщо є
+                    qrData: coupon.qr || coupon.number,  // QR з номера талону як у оригіналі
                     validUntil: coupon.validTo,
                     fuelType: coupon.fuelType || 'Дизельне паливо'
                 });

@@ -1,11 +1,14 @@
 /**
  * PDF Генератор талонів на пальне OKKO
- * Створює PDF-документ максимально схожий на оригінальний талон OKKO
- * з Code128 штрих-кодом для сканування на АЗС
+ * Ідентичний оригінальному дизайну OKKO:
+ *  - Чорний верх з жовтим типом пального + OKKO лого
+ *  - QR-код + Дійсний до + літри
+ *  - Великий номер талону
+ *  - Юридичний текст + гаряча лінія
  */
 
 const PDFDocument = require('pdfkit');
-const bwipjs = require('bwip-js');
+const QRCode = require('qrcode');
 const path = require('path');
 
 // Шляхи до шрифтів з підтримкою кирилиці
@@ -13,28 +16,24 @@ const FONT_REGULAR = path.join(__dirname, 'fonts', 'DejaVuSans.ttf');
 const FONT_BOLD = path.join(__dirname, 'fonts', 'DejaVuSans-Bold.ttf');
 
 // Кольори OKKO
-const OKKO_GREEN = '#89B82C';
-const OKKO_DARK_GREEN = '#5A8A00';
+const OKKO_YELLOW = '#FFD200';
+const OKKO_BLACK = '#1a1a1a';
+const WHITE = '#FFFFFF';
 const TEXT_DARK = '#1a1a1a';
-const TEXT_GRAY = '#666666';
-const TEXT_LIGHT = '#999999';
-const BORDER_COLOR = '#E0E0E0';
+const TEXT_GRAY = '#555555';
+const LINE_COLOR = '#CCCCCC';
 
 class CouponPDF {
     /**
      * Генерує PDF-талон, ідентичний оригіналу OKKO
-     * @param {Object} options
-     * @param {number} options.liters - Номінал в літрах
-     * @param {string} options.couponNumber - Номер талону (20 цифр)
-     * @param {string} options.qrData - Дані для QR (якщо є)
-     * @param {string} options.validUntil - Дійсний до
-     * @param {string} options.fuelType - Тип пального
-     * @returns {Promise<Buffer>} PDF як Buffer
      */
     static async generate(options) {
+        const width = 420;
+        const height = 650;
+
         const doc = new PDFDocument({
-            size: [420, 595], // A5
-            margins: { top: 25, bottom: 25, left: 25, right: 25 }
+            size: [width, height],
+            margins: { top: 0, bottom: 0, left: 0, right: 0 }
         });
 
         // Реєструємо шрифти з підтримкою кирилиці
@@ -49,158 +48,216 @@ class CouponPDF {
             doc.on('error', reject);
         });
 
-        const width = 420;
-        const contentWidth = width - 50;
+        // ================================================================
+        // 1. ЧОРНИЙ ВЕРХНІЙ БЛОК (тип пального + OKKO лого)
+        // ================================================================
+        const headerHeight = 240;
+        doc.rect(0, 0, width, headerHeight).fill(OKKO_BLACK);
 
-        // ===== Зовнішня рамка =====
-        doc.roundedRect(10, 10, width - 20, 575, 8)
-            .lineWidth(2).strokeColor(OKKO_GREEN).stroke();
-
-        // ===== Верхня зелена смуга =====
-        doc.rect(10, 10, width - 20, 50)
-            .fill(OKKO_GREEN);
-
-        // ===== Лого OKKO =====
-        doc.fontSize(28)
-            .fillColor('#FFFFFF')
-            .font('Bold')
-            .text('OKKO', 25, 20, { align: 'center', width: contentWidth });
-
-        // ===== Підзаголовок — тип документа =====
-        doc.fontSize(9)
-            .fillColor('#FFFFFF')
-            .font('Regular')
-            .text('ТАЛОН НА ПАЛЬНЕ', 25, 44, { align: 'center', width: contentWidth });
-
-        // ===== Тип пального =====
+        // Тип пального (великий жовтий текст зліва)
         const fuelType = options.fuelType || 'Дизельне паливо';
-        doc.fontSize(16)
-            .fillColor(OKKO_DARK_GREEN)
-            .font('Bold')
-            .text(fuelType.toUpperCase(), 25, 75, { align: 'center', width: contentWidth });
+        const fuelLines = this._formatFuelType(fuelType);
 
-        // Горизонтальна лінія
-        doc.moveTo(30, 100).lineTo(width - 30, 100)
-            .lineWidth(1).strokeColor(BORDER_COLOR).stroke();
+        doc.fontSize(52)
+            .fillColor(OKKO_YELLOW)
+            .font('Bold');
 
-        // ===== Номінал (великий текст) =====
-        doc.fontSize(72)
-            .fillColor(OKKO_GREEN)
-            .font('Bold')
-            .text(`${options.liters}`, 25, 110, { align: 'center', width: contentWidth });
+        fuelLines.forEach((line, i) => {
+            doc.text(line, 20, 30 + i * 58, { width: 200 });
+        });
 
-        doc.fontSize(18)
-            .fillColor(TEXT_DARK)
-            .font('Regular')
-            .text('ЛІТРІВ', 25, 190, { align: 'center', width: contentWidth });
+        // OKKO лого справа — жовте коло з хвилями
+        this._drawOkkoLogo(doc, width - 130, 30, 100);
 
-        // Горизонтальна лінія
-        doc.moveTo(30, 220).lineTo(width - 30, 220)
-            .lineWidth(1).strokeColor(BORDER_COLOR).stroke();
+        // ================================================================
+        // 2. БІЛИЙ СЕРЕДНІЙ БЛОК (QR + дата + літри)
+        // ================================================================
+        const midY = headerHeight + 15;
 
-        // ===== Штрих-код Code128 =====
-        const barcodeData = options.couponNumber || '';
-        if (barcodeData) {
-            try {
-                const barcodeBuffer = await bwipjs.toBuffer({
-                    bcid: 'code128',
-                    text: barcodeData,
-                    scale: 3,
-                    height: 15,
-                    includetext: false,
-                    textxalign: 'center',
-                });
-
-                // Штрих-код по центру
-                const barcodeWidth = 300;
-                const barcodeHeight = 80;
-                const barcodeX = (width - barcodeWidth) / 2;
-                doc.image(barcodeBuffer, barcodeX, 235, {
-                    width: barcodeWidth,
-                    height: barcodeHeight
-                });
-            } catch (err) {
-                console.error('❌ Barcode generation error:', err);
-                // Fallback — показуємо номер великим текстом
-                doc.fontSize(14).fillColor(TEXT_DARK).font('Bold')
-                    .text(barcodeData, 25, 265, { align: 'center', width: contentWidth });
-            }
-        }
-
-        // ===== Номер талону під штрих-кодом =====
-        const formattedNum = this._formatNumber(options.couponNumber);
-        doc.fontSize(11)
-            .fillColor(TEXT_DARK)
-            .font('Regular')
-            .text(formattedNum, 25, 325, { align: 'center', width: contentWidth });
-
-        // Горизонтальна лінія
-        doc.moveTo(30, 350).lineTo(width - 30, 350)
-            .lineWidth(1).strokeColor(BORDER_COLOR).stroke();
-
-        // ===== QR-код (якщо є дані) =====
-        const qrContent = options.qrData;
+        // QR-код зліва
+        const qrContent = options.qrData || options.couponNumber || '';
         if (qrContent) {
             try {
-                const QRCode = require('qrcode');
                 const qrBuffer = await QRCode.toBuffer(qrContent, {
                     width: 120,
                     margin: 1,
-                    errorCorrectionLevel: 'H'
+                    errorCorrectionLevel: 'H',
+                    color: { dark: '#000000', light: '#ffffff' }
                 });
-                doc.image(qrBuffer, (width - 120) / 2, 360, { width: 120, height: 120 });
+                doc.image(qrBuffer, 20, midY, { width: 110, height: 110 });
             } catch (err) {
                 console.error('QR generation error:', err);
             }
         }
 
-        // ===== Деталі =====
-        const detailsY = qrContent ? 490 : 365;
-        const labelX = 50;
-        const valueX = 220;
+        // Дійсний до (справа від QR)
+        const validDate = this._formatDate(options.validUntil);
+        doc.fontSize(13)
+            .fillColor(TEXT_DARK)
+            .font('Bold')
+            .text(`Дійсний до ${validDate} включно.`, 145, midY + 8, {
+                width: 250
+            });
 
-        const details = [
-            ['Номер талону:', formattedNum],
-            ['Тип пального:', fuelType],
-            ['Дійсний до:', options.validUntil || '—'],
-        ];
+        // Літри (великий текст справа від QR)
+        doc.fontSize(56)
+            .fillColor(TEXT_DARK)
+            .font('Bold')
+            .text(`${options.liters}`, 145, midY + 38, {
+                width: 150,
+                continued: false
+            });
 
-        details.forEach(([label, value], i) => {
-            const y = detailsY + (i * 22);
-            doc.fontSize(9).fillColor(TEXT_GRAY).font('Regular')
-                .text(label, labelX, y);
-            doc.fontSize(10).fillColor(TEXT_DARK).font('Bold')
-                .text(value, valueX, y);
+        doc.fontSize(28)
+            .fillColor(TEXT_DARK)
+            .font('Bold')
+            .text('л', 145 + this._getNumberWidth(options.liters, 56) + 5, midY + 55);
+
+        // ================================================================
+        // 3. ГОРИЗОНТАЛЬНА ЛІНІЯ
+        // ================================================================
+        const lineY = midY + 120;
+        doc.moveTo(15, lineY).lineTo(width - 15, lineY)
+            .lineWidth(1).strokeColor(LINE_COLOR).stroke();
+
+        // ================================================================
+        // 4. ВЕЛИКИЙ НОМЕР ТАЛОНУ
+        // ================================================================
+        const numY = lineY + 12;
+        doc.fontSize(24)
+            .fillColor(TEXT_DARK)
+            .font('Bold')
+            .text(options.couponNumber || '', 15, numY, {
+                align: 'center',
+                width: width - 30
+            });
+
+        // ================================================================
+        // 5. ЮРИДИЧНИЙ ТЕКСТ
+        // ================================================================
+        const legalY = numY + 40;
+
+        doc.fontSize(8.5)
+            .fillColor(TEXT_GRAY)
+            .font('Regular');
+
+        const legalText = `Перелік АЗК «ОККО», де приймаються талони:\nhttps://www.okko.ua/fuel-map\nОбміну, поверненню, повторній видачі не підлягає. Вартість протермінованого талону не повертається. Залишок невикористаного пального по талону не зберігається. На цей талон не поширюються знижки та спеціальні пропозиції, які діють на АЗК «ОККО».`;
+
+        doc.text(legalText, 20, legalY, {
+            width: width - 40,
+            lineGap: 2
         });
 
-        // Горизонтальна лінія перед підвалом
-        const footerLineY = detailsY + details.length * 22 + 10;
-        doc.moveTo(30, footerLineY).lineTo(width - 30, footerLineY)
-            .lineWidth(1).strokeColor(BORDER_COLOR).stroke();
-
-        // ===== Підвал =====
-        doc.fontSize(8)
+        // Деталі + телефон
+        const detailsY = legalY + 85;
+        doc.fontSize(9)
             .fillColor(TEXT_GRAY)
             .font('Regular')
-            .text('Талон дійсний для одноразового використання', 25, footerLineY + 10, {
-                align: 'center', width: contentWidth
-            });
+            .text('Деталі ', 20, detailsY, { continued: true });
 
-        doc.fontSize(8)
-            .fillColor(TEXT_GRAY)
-            .text('на мережі АЗС OKKO. Покажіть штрих-код касиру.', 25, footerLineY + 22, {
-                align: 'center', width: contentWidth
-            });
-
-        doc.fontSize(8)
-            .fillColor(OKKO_GREEN)
+        doc.fontSize(9)
+            .fillColor(OKKO_YELLOW)
             .font('Bold')
-            .text('Гаряча лінія: 0 800 501 101  |  okko.ua', 25, footerLineY + 40, {
-                align: 'center', width: contentWidth
-            });
+            .text('0 800 501 101', { continued: false });
 
         doc.end();
         return finished;
+    }
+
+    /**
+     * Малює лого OKKO — жовте коло з концентричними хвилями + текст OKKO
+     */
+    static _drawOkkoLogo(doc, x, y, size) {
+        const centerX = x + size / 2;
+        const centerY = y + size / 2;
+
+        // Зовнішні хвилі (жовті дуги)
+        for (let i = 0; i < 3; i++) {
+            const radius = size / 2 + 15 - i * 8;
+            doc.save()
+                .lineWidth(5)
+                .strokeColor(OKKO_YELLOW)
+                .strokeOpacity(0.6 - i * 0.15);
+
+            // Верхня дуга
+            doc.path(`M ${centerX - radius * 0.7} ${centerY - radius * 0.7} A ${radius} ${radius} 0 0 1 ${centerX + radius * 0.7} ${centerY - radius * 0.7}`)
+                .stroke();
+
+            doc.restore();
+        }
+
+        // Жовте основне коло
+        doc.circle(centerX, centerY, size / 2)
+            .fill(OKKO_YELLOW);
+
+        // Чорне внутрішнє коло (кільце)
+        doc.circle(centerX, centerY, size / 2 - 12)
+            .fill(OKKO_BLACK);
+
+        // Жовте маленьке коло всередині
+        doc.circle(centerX, centerY, size / 2 - 24)
+            .fill(OKKO_YELLOW);
+
+        // Чорне ядро
+        doc.circle(centerX, centerY, size / 2 - 36)
+            .fill(OKKO_BLACK);
+
+        // Текст OKKO під колом
+        doc.fontSize(22)
+            .fillColor(WHITE)
+            .font('Bold')
+            .text('OKKO', x - 10, y + size + 20, {
+                width: size + 20,
+                align: 'center'
+            });
+    }
+
+    /**
+     * Форматує тип пального в рядки для відображення
+     * "Дизельне паливо" → ["ДП", "ЄВРО"]
+     * "PULLS Diesel" → ["PULLS", "DIESEL"]
+     */
+    static _formatFuelType(fuelType) {
+        const ft = fuelType.toUpperCase();
+
+        // Маппінг найпоширеніших типів OKKO
+        if (ft.includes('ДИЗЕЛ') || ft.includes('ДП')) return ['ДП', 'ЄВРО'];
+        if (ft.includes('PULLS') && ft.includes('95')) return ['PULLS', '95'];
+        if (ft.includes('PULLS') && ft.includes('98')) return ['PULLS', '98'];
+        if (ft.includes('PULLS') && ft.includes('DIESEL')) return ['PULLS', 'DIESEL'];
+        if (ft.includes('PULLS')) return ['PULLS', '95'];
+        if (ft.includes('95')) return ['A-95', 'ЄВРО'];
+        if (ft.includes('92')) return ['A-92'];
+        if (ft.includes('ГАЗ') || ft.includes('LPG')) return ['ГАЗ', 'LPG'];
+
+        // Дефолт — розбиваємо на 2 рядки
+        const words = ft.split(' ');
+        if (words.length >= 2) {
+            return [words.slice(0, Math.ceil(words.length / 2)).join(' '),
+            words.slice(Math.ceil(words.length / 2)).join(' ')];
+        }
+        return [ft];
+    }
+
+    /**
+     * Форматує дату з ISO в DD.MM.YYYY
+     */
+    static _formatDate(dateStr) {
+        if (!dateStr) return '—';
+        // Якщо вже у форматі DD.MM.YYYY
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateStr)) return dateStr;
+        // ISO: 2045-08-31 → 31.08.2045
+        const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) return `${match[3]}.${match[2]}.${match[1]}`;
+        return dateStr;
+    }
+
+    /**
+     * Приблизна ширина числа в пікселях для позиціонування "л"
+     */
+    static _getNumberWidth(num, fontSize) {
+        const digits = String(num).length;
+        return digits * fontSize * 0.55;
     }
 
     /**
