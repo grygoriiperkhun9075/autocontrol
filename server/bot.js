@@ -507,7 +507,9 @@ AA 1234 BB
     }
 
     /**
-     * Генерація і відправка PDF-талону зі штрих-кодом Code128 (як оригінал OKKO)
+     * Відправка оригінального PDF-талону з OKKO SSP
+     * Спочатку намагається отримати оригінальний PDF з OKKO API
+     * Якщо не вдається — генерує локально
      */
     async generateAndSendCouponPDF(chatId, liters, messageId = null) {
         if (!this.bot) return;
@@ -522,7 +524,6 @@ AA 1234 BB
         }
 
         try {
-            // Отримуємо талони якщо кеш порожній
             if (this.okko && this.okko.isConfigured()) {
                 await this.okko.fetchActiveCoupons();
 
@@ -532,18 +533,31 @@ AA 1234 BB
                     return;
                 }
 
-                // Генеруємо PDF ідентичний оригіналу OKKO
-                const pdfBuffer = await CouponPDF.generate({
-                    liters: coupon.nominal,
-                    couponNumber: coupon.number,
-                    qrData: coupon.qr || coupon.number,  // QR з номера талону як у оригіналі
-                    validUntil: coupon.validTo,
-                    fuelType: coupon.fuelType || 'Дизельне паливо'
-                });
-
-                // Форматуємо номер для display
                 const formattedNum = CouponPDF._formatNumber ?
                     CouponPDF._formatNumber(coupon.number) : coupon.number;
+
+                // === СПРОБА 1: Оригінальний PDF з OKKO SSP ===
+                let pdfBuffer = null;
+                try {
+                    pdfBuffer = await this.okko.fetchCouponPDF(coupon);
+                    if (pdfBuffer) {
+                        console.log(`✅ Відправляю оригінальний OKKO PDF (${pdfBuffer.length} bytes)`);
+                    }
+                } catch (err) {
+                    console.error('⚠️ Не вдалося отримати оригінальний PDF:', err.message);
+                }
+
+                // === СПРОБА 2: Генеруємо локально (fallback) ===
+                if (!pdfBuffer) {
+                    console.log('📄 Fallback: генерую PDF локально...');
+                    pdfBuffer = await CouponPDF.generate({
+                        liters: coupon.nominal,
+                        couponNumber: coupon.number,
+                        qrData: coupon.qr || coupon.number,
+                        validUntil: coupon.validTo,
+                        fuelType: coupon.fuelType || 'Дизельне паливо'
+                    });
+                }
 
                 // Відправляємо PDF
                 await this.bot.sendDocument(chatId, pdfBuffer, {
@@ -554,7 +568,6 @@ AA 1234 BB
                     contentType: 'application/pdf'
                 });
 
-                // Оновлюємо повідомлення
                 if (messageId) {
                     this.bot.editMessageText(`✅ *Талон на ${coupon.nominal} л відправлено!*`, {
                         chat_id: chatId,
