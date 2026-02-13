@@ -8,7 +8,9 @@ const Storage = {
         FUEL: 'autocontrol_fuel',
         EXPENSES: 'autocontrol_expenses',
         REMINDERS: 'autocontrol_reminders',
-        COUPONS: 'autocontrol_coupons'
+        COUPONS: 'autocontrol_coupons',
+        MAINTENANCE: 'autocontrol_maintenance',
+        DOCUMENTS: 'autocontrol_documents'
     },
 
     // URL сервера (відносний шлях для роботи і локально, і на Railway)
@@ -112,6 +114,8 @@ const Storage = {
             expenses: this.get(this.KEYS.EXPENSES),
             reminders: this.get(this.KEYS.REMINDERS),
             coupons: this.get(this.KEYS.COUPONS),
+            maintenance: this.get(this.KEYS.MAINTENANCE),
+            documents: this.get(this.KEYS.DOCUMENTS),
             exportedAt: new Date().toISOString()
         };
     },
@@ -125,6 +129,8 @@ const Storage = {
         if (data.expenses) this.set(this.KEYS.EXPENSES, data.expenses);
         if (data.reminders) this.set(this.KEYS.REMINDERS, data.reminders);
         if (data.coupons) this.set(this.KEYS.COUPONS, data.coupons);
+        if (data.maintenance) this.set(this.KEYS.MAINTENANCE, data.maintenance);
+        if (data.documents) this.set(this.KEYS.DOCUMENTS, data.documents);
     },
 
     /**
@@ -184,7 +190,7 @@ const Storage = {
      */
     mergeData(serverData) {
         // Об'єднуємо дані - додаємо нові з сервера, яких немає локально
-        ['cars', 'fuel', 'expenses', 'reminders'].forEach(type => {
+        ['cars', 'fuel', 'expenses', 'reminders', 'coupons', 'maintenance', 'documents'].forEach(type => {
             const key = this.KEYS[type.toUpperCase()];
             const localData = this.get(key);
             const serverItems = serverData[type] || [];

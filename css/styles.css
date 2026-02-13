@@ -1283,3 +1283,216 @@ form {
     background: rgba(239, 68, 68, 0.1) !important;
     border-color: rgba(239, 68, 68, 0.3);
 }
+
+/* ===== Norm Badges ===== */
+.norm-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 6px;
+}
+.norm-badge.ok { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+.norm-badge.warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+.norm-badge.danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+
+/* ===== Stat Card Statuses ===== */
+.stat-card.stat-danger { border: 1px solid var(--danger); box-shadow: 0 0 12px rgba(239, 68, 68, 0.2); }
+.stat-card.stat-warning { border: 1px solid var(--warning); box-shadow: 0 0 12px rgba(245, 158, 11, 0.2); }
+
+/* ===== Maintenance Grid ===== */
+.maintenance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+.maintenance-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 1.2rem;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+.maintenance-card:hover {
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-glow);
+}
+.maintenance-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+}
+.maintenance-card-type {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+.maintenance-card-date,
+.maintenance-card-car {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+.maintenance-card-cost {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--success);
+    margin-top: 0.4rem;
+}
+.maintenance-card-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+    font-style: italic;
+}
+
+/* ===== Documents Grid ===== */
+.documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+.document-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 1.2rem;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+.document-card:hover {
+    border-color: var(--accent-primary);
+    box-shadow: var(--shadow-glow);
+}
+.document-card.status-overdue {
+    border-color: var(--danger);
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+}
+.document-card.status-soon {
+    border-color: var(--warning);
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+}
+.document-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+}
+.document-card-type {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+.document-card-actions { display: flex; gap: 4px; }
+.document-card-number,
+.document-card-expiry,
+.document-card-car {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.2rem;
+}
+.document-card-days {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.3rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    display: inline-block;
+}
+.document-card-days.overdue {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+}
+.document-card-days.soon {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+}
+.document-card-days.normal {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+.document-card-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+    font-style: italic;
+}
+
+/* ===== Form Row ===== */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+@media (max-width: 480px) {
+    .form-row { grid-template-columns: 1fr; }
+}
+
+/* ===== Top Expensive Cars Widget ===== */
+.top-cars-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.top-car-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+.top-car-item:last-child { border-bottom: none; }
+.top-car-rank {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.top-car-info {
+    flex: 1;
+    min-width: 0;
+}
+.top-car-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.top-car-plate {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: 6px;
+}
+.top-car-progress-wrap {
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    margin: 4px 0;
+    overflow: hidden;
+}
+.top-car-progress {
+    height: 100%;
+    background: var(--accent-gradient);
+    border-radius: 3px;
+    transition: width 0.6s ease;
+}
+.top-car-breakdown {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+.top-car-total {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--success);
+    white-space: nowrap;
+}

@@ -18,6 +18,8 @@ class CompanyStorage {
             expenses: [],
             reminders: [],
             coupons: [],
+            maintenance: [],    // [{id, carId, type, date, mileage, cost, description, createdAt}]
+            documents: [],      // [{id, carId, type, number, issueDate, expiryDate, note, createdAt}]
             authorizedDrivers: [] // [{chatId, name, addedAt}]
         };
         this.load();
@@ -231,9 +233,29 @@ class CompanyStorage {
             mileage: parseInt(carData.mileage) || 0,
             plate: plateFormatted,
             color: carData.color || '',
+            fuelNorm: parseFloat(carData.fuelNorm) || 0, // л/100км норма
             createdAt: new Date().toISOString()
         };
         this.data.cars.push(car);
+        this.save();
+        return car;
+    }
+
+    updateCar(id, carData) {
+        const car = this.findCarById(id);
+        if (!car) return null;
+
+        if (carData.brand !== undefined) car.brand = carData.brand;
+        if (carData.model !== undefined) car.model = carData.model;
+        if (carData.year !== undefined) car.year = carData.year;
+        if (carData.mileage !== undefined) car.mileage = parseInt(carData.mileage) || 0;
+        if (carData.plate !== undefined) {
+            const norm = CompanyStorage.normalizePlate(carData.plate);
+            car.plate = CompanyStorage.formatPlate(norm);
+        }
+        if (carData.color !== undefined) car.color = carData.color;
+        if (carData.fuelNorm !== undefined) car.fuelNorm = parseFloat(carData.fuelNorm) || 0;
+
         this.save();
         return car;
     }
@@ -347,6 +369,98 @@ class CompanyStorage {
         return false;
     }
 
+    // ========== MAINTENANCE (Історія ТО) ==========
+
+    getMaintenance(carId = null) {
+        if (!this.data.maintenance) this.data.maintenance = [];
+        if (carId) {
+            return this.data.maintenance.filter(m => m.carId === carId);
+        }
+        return this.data.maintenance;
+    }
+
+    addMaintenance(data) {
+        if (!this.data.maintenance) this.data.maintenance = [];
+        const record = {
+            id: this.generateId(),
+            carId: data.carId,
+            type: data.type || 'maintenance', // oil, tires, brakes, filter, battery, other
+            date: data.date || new Date().toISOString().split('T')[0],
+            mileage: parseInt(data.mileage) || 0,
+            cost: parseFloat(data.cost) || 0,
+            description: data.description || '',
+            createdAt: new Date().toISOString()
+        };
+        this.data.maintenance.push(record);
+        this.save();
+        return record;
+    }
+
+    deleteMaintenance(id) {
+        if (!this.data.maintenance) return false;
+        const before = this.data.maintenance.length;
+        this.data.maintenance = this.data.maintenance.filter(m => m.id !== id);
+        if (this.data.maintenance.length < before) {
+            this.save();
+            return true;
+        }
+        return false;
+    }
+
+    // ========== DOCUMENTS (Документи) ==========
+
+    getDocuments(carId = null) {
+        if (!this.data.documents) this.data.documents = [];
+        if (carId) {
+            return this.data.documents.filter(d => d.carId === carId);
+        }
+        return this.data.documents;
+    }
+
+    addDocument(data) {
+        if (!this.data.documents) this.data.documents = [];
+        const doc = {
+            id: this.generateId(),
+            carId: data.carId || null,
+            type: data.type || 'insurance', // insurance, inspection, license, permit, other
+            number: data.number || '',
+            issueDate: data.issueDate || '',
+            expiryDate: data.expiryDate || '',
+            note: data.note || '',
+            createdAt: new Date().toISOString()
+        };
+        this.data.documents.push(doc);
+        this.save();
+        return doc;
+    }
+
+    updateDocument(id, data) {
+        if (!this.data.documents) return null;
+        const doc = this.data.documents.find(d => d.id === id);
+        if (!doc) return null;
+
+        if (data.carId !== undefined) doc.carId = data.carId;
+        if (data.type !== undefined) doc.type = data.type;
+        if (data.number !== undefined) doc.number = data.number;
+        if (data.issueDate !== undefined) doc.issueDate = data.issueDate;
+        if (data.expiryDate !== undefined) doc.expiryDate = data.expiryDate;
+        if (data.note !== undefined) doc.note = data.note;
+
+        this.save();
+        return doc;
+    }
+
+    deleteDocument(id) {
+        if (!this.data.documents) return false;
+        const before = this.data.documents.length;
+        this.data.documents = this.data.documents.filter(d => d.id !== id);
+        if (this.data.documents.length < before) {
+            this.save();
+            return true;
+        }
+        return false;
+    }
+
     // ========== DATA ==========
 
     getAllData() {
@@ -359,6 +473,8 @@ class CompanyStorage {
         if (newData.expenses) this.data.expenses = newData.expenses;
         if (newData.reminders) this.data.reminders = newData.reminders;
         if (newData.coupons) this.data.coupons = newData.coupons;
+        if (newData.maintenance) this.data.maintenance = newData.maintenance;
+        if (newData.documents) this.data.documents = newData.documents;
         // Дедуплікація після імпорту всіх даних
         this.deduplicateCars();
         this.save();

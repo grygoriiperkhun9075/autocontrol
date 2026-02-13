@@ -124,6 +124,8 @@ const App = {
         // Оновлення заголовка
         const titles = {
             'dashboard': 'Головна',
+            'maintenance': 'Технічне обслуговування',
+            'documents': 'Документи',
             'cars': 'Автомобілі',
             'fuel': 'Заправки',
             'coupons': 'Талони',
@@ -175,6 +177,12 @@ const App = {
             case 'reminders':
                 Reminders.renderGrid(carId);
                 break;
+            case 'maintenance':
+                Maintenance.renderGrid(carId);
+                break;
+            case 'documents':
+                Documents.renderGrid(carId);
+                break;
             case 'statistics':
                 Charts.updateStatistics(carId, this.getStatsPeriod());
                 break;
@@ -222,6 +230,23 @@ const App = {
 
         // Нагадування
         Reminders.renderUpcomingPreview();
+
+        // Dashboard статуси ТО та Документів
+        const maintStatus = Maintenance.getDashboardStatus();
+        const maintEl = document.getElementById('maintenanceStatus');
+        const maintLbl = document.getElementById('maintenanceStatusLabel');
+        if (maintEl) maintEl.textContent = maintStatus.emoji;
+        if (maintLbl) maintLbl.textContent = maintStatus.label;
+        const maintCard = document.getElementById('dashMaintenanceCard');
+        if (maintCard) maintCard.className = `stat-card ${maintStatus.status === 'danger' ? 'stat-danger' : maintStatus.status === 'warning' ? 'stat-warning' : ''}`;
+
+        const docStatus = Documents.getDashboardStatus();
+        const docEl = document.getElementById('documentsStatus');
+        const docLbl = document.getElementById('documentsStatusLabel');
+        if (docEl) docEl.textContent = docStatus.emoji;
+        if (docLbl) docLbl.textContent = docStatus.label;
+        const docCard = document.getElementById('dashDocumentsCard');
+        if (docCard) docCard.className = `stat-card ${docStatus.status === 'danger' ? 'stat-danger' : docStatus.status === 'warning' ? 'stat-warning' : ''}`;
     },
 
     /**
@@ -269,6 +294,14 @@ const App = {
             }
             Reminders.openAddModal();
         });
+        document.getElementById('addMaintenanceBtn').addEventListener('click', () => {
+            if (Cars.getAll().length === 0) {
+                alert('Спочатку додайте автомобіль');
+                return;
+            }
+            Maintenance.openAddModal();
+        });
+        document.getElementById('addDocumentBtn').addEventListener('click', () => Documents.openAddModal());
         document.getElementById('exportBtn').addEventListener('click', () => Export.openModal());
 
         // Закриття модальних вікон
@@ -307,6 +340,8 @@ const App = {
         document.getElementById('expenseForm').addEventListener('submit', (e) => Expenses.handleFormSubmit(e));
         document.getElementById('reminderForm').addEventListener('submit', (e) => Reminders.handleFormSubmit(e));
         document.getElementById('couponForm').addEventListener('submit', (e) => Coupons.handleFormSubmit(e));
+        document.getElementById('maintenanceForm').addEventListener('submit', (e) => Maintenance.handleFormSubmit(e));
+        document.getElementById('documentForm').addEventListener('submit', (e) => Documents.handleFormSubmit(e));
     },
 
     /**

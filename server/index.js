@@ -333,7 +333,53 @@ app.delete('/api/coupons/:id', (req, res) => {
     res.json({ success: deleted });
 });
 
-// ========== SYNC ==========
+// ========== CAR UPDATE ==========
+
+app.put('/api/cars/:id', (req, res) => {
+    const car = req.storage.updateCar(req.params.id, req.body);
+    if (!car) return res.status(404).json({ error: 'Авто не знайдено' });
+    res.json(car);
+});
+
+// ========== MAINTENANCE (ТО) ==========
+
+app.get('/api/maintenance', (req, res) => {
+    const carId = req.query.carId || null;
+    res.json(req.storage.getMaintenance(carId));
+});
+
+app.post('/api/maintenance', (req, res) => {
+    const record = req.storage.addMaintenance(req.body);
+    res.json(record);
+});
+
+app.delete('/api/maintenance/:id', (req, res) => {
+    const deleted = req.storage.deleteMaintenance(req.params.id);
+    res.json({ success: deleted });
+});
+
+// ========== DOCUMENTS (ДОКУМЕНТИ) ==========
+
+app.get('/api/documents', (req, res) => {
+    const carId = req.query.carId || null;
+    res.json(req.storage.getDocuments(carId));
+});
+
+app.post('/api/documents', (req, res) => {
+    const doc = req.storage.addDocument(req.body);
+    res.json(doc);
+});
+
+app.put('/api/documents/:id', (req, res) => {
+    const doc = req.storage.updateDocument(req.params.id, req.body);
+    if (!doc) return res.status(404).json({ error: 'Документ не знайдено' });
+    res.json(doc);
+});
+
+app.delete('/api/documents/:id', (req, res) => {
+    const deleted = req.storage.deleteDocument(req.params.id);
+    res.json({ success: deleted });
+});
 
 app.get('/api/sync', (req, res) => {
     res.json({

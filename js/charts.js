@@ -388,11 +388,172 @@ const Charts = {
     },
 
     /**
+     * Графік: Витрата vs Норма (по авто) — Dashboard
+     */
+    initConsumptionNormChart() {
+        const ctx = document.getElementById('consumptionNormChart');
+        if (!ctx) return;
+
+        if (this.instances.consumptionNorm) {
+            this.instances.consumptionNorm.destroy();
+        }
+
+        const cars = Cars.getAll();
+        const labels = [];
+        const actualData = [];
+        const normData = [];
+
+        cars.forEach(car => {
+            const consumption = Cars.getAverageConsumption(car.id);
+            const fuelNorm = car.fuelNorm || 0;
+            if (consumption > 0 || fuelNorm > 0) {
+                labels.push(`${car.brand} ${car.model}`);
+                actualData.push(consumption || 0);
+                normData.push(fuelNorm);
+            }
+        });
+
+        if (labels.length === 0) {
+            ctx.getContext('2d').font = '14px Inter';
+            ctx.getContext('2d').fillStyle = '#6c6c8a';
+            ctx.getContext('2d').fillText('Немає даних для відображення', 50, 80);
+            return;
+        }
+
+        this.instances.consumptionNorm = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Факт (л/100км)',
+                    data: actualData,
+                    backgroundColor: this.colors.primary,
+                    borderRadius: 6
+                }, {
+                    label: 'Норма (л/100км)',
+                    data: normData,
+                    backgroundColor: this.colors.warning,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                ...this.defaults,
+                plugins: {
+                    ...this.defaults.plugins,
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label}: ${context.parsed.y} л/100км`
+                        }
+                    }
+                }
+            }
+        });
+    },
+
+    /**
+     * Графік: Вартість на 1 км (по авто) — Statistics
+     */
+    initCostPerKmChart() {
+        const ctx = document.getElementById('costPerKmChart');
+        if (!ctx) return;
+
+        if (this.instances.costPerKm) {
+            this.instances.costPerKm.destroy();
+        }
+
+        const cars = Cars.getAll();
+        const labels = [];
+        const data = [];
+        const bgColors = [];
+
+        cars.forEach(car => {
+            const mileage = Cars.getCurrentMileage(car.id);
+            if (mileage <= 0) return;
+            const fuelCost = Fuel.getTotalFuelCost(car.id);
+            const expTotal = Cars.getTotalExpenses(car.id);
+            const maintCost = Maintenance.getTotalCost(car.id);
+            const totalCost = fuelCost + expTotal + maintCost;
+            const costPerKm = (totalCost / mileage).toFixed(2);
+
+            labels.push(`${car.brand} ${car.model}`);
+            data.push(parseFloat(costPerKm));
+            bgColors.push(this.colors.info);
+        });
+
+        if (labels.length === 0) return;
+
+        this.instances.costPerKm = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'грн/км',
+                    data: data,
+                    backgroundColor: bgColors,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                ...this.defaults,
+                plugins: {
+                    ...this.defaults.plugins,
+                    legend: { display: false }
+                }
+            }
+        });
+    },
+
+    /**
+     * Виджет: Топ найдорожчих авто — Statistics
+     */
+    renderTopExpensiveCars() {
+        const container = document.getElementById('topExpensiveCars');
+        if (!container) return;
+
+        const cars = Cars.getAll();
+        const carCosts = cars.map(car => {
+            const fuelCost = Fuel.getTotalFuelCost(car.id);
+            const expTotal = Cars.getTotalExpenses(car.id);
+            const maintCost = Maintenance.getTotalCost(car.id);
+            return {
+                name: `${car.brand} ${car.model}`,
+                plate: car.plate || '',
+                total: fuelCost + expTotal + maintCost,
+                fuel: fuelCost,
+                maint: maintCost,
+                other: expTotal
+            };
+        }).sort((a, b) => b.total - a.total).slice(0, 5);
+
+        if (carCosts.length === 0) {
+            container.innerHTML = '<p class="empty-message">Немає даних</p>';
+            return;
+        }
+
+        const maxCost = carCosts[0].total || 1;
+
+        container.innerHTML = carCosts.map((car, i) => `
+            <div class="top-car-item">
+                <div class="top-car-rank">${i + 1}</div>
+                <div class="top-car-info">
+                    <div class="top-car-name">${car.name} ${car.plate ? `<span class="top-car-plate">${car.plate}</span>` : ''}</div>
+                    <div class="top-car-progress-wrap">
+                        <div class="top-car-progress" style="width: ${(car.total / maxCost * 100).toFixed(0)}%"></div>
+                    </div>
+                    <div class="top-car-breakdown">⛽ ${car.fuel.toLocaleString()} + 🛠️ ${car.maint.toLocaleString()} + 📦 ${car.other.toLocaleString()} грн</div>
+                </div>
+                <div class="top-car-total">${car.total.toLocaleString()} грн</div>
+            </div>
+        `).join('');
+    },
+
+    /**
      * Оновлення всіх графіків Dashboard
      */
     updateDashboard(carId = null, period = 'all') {
         this.initFuelChart(carId, period);
         this.initExpensesChart(carId, period);
+        this.initConsumptionNormChart();
     },
 
     /**
@@ -402,6 +563,8 @@ const Charts = {
         this.initConsumptionTrendChart(carId, period);
         this.initExpensesCompareChart(carId, period);
         this.initFuelCostChart(carId, period);
+        this.initCostPerKmChart();
+        this.renderTopExpensiveCars();
     },
 
     /**

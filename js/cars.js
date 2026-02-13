@@ -27,7 +27,8 @@ const Cars = {
             year: carData.year || null,
             mileage: parseInt(carData.mileage) || 0,
             plate: carData.plate || '',
-            color: carData.color || ''
+            color: carData.color || '',
+            fuelNorm: parseFloat(carData.fuelNorm) || 0
         };
         return Storage.add(Storage.KEYS.CARS, car);
     },
@@ -42,7 +43,8 @@ const Cars = {
             year: carData.year || null,
             mileage: parseInt(carData.mileage) || 0,
             plate: carData.plate || '',
-            color: carData.color || ''
+            color: carData.color || '',
+            fuelNorm: parseFloat(carData.fuelNorm) || 0
         });
     },
 
@@ -122,6 +124,19 @@ const Cars = {
         const mileage = this.getCurrentMileage(car.id);
         const consumption = this.getAverageConsumption(car.id);
         const expenses = this.getTotalExpenses(car.id);
+        const fuelNorm = car.fuelNorm || 0;
+
+        let normIndicator = '';
+        if (fuelNorm > 0 && consumption > 0) {
+            const diff = ((consumption - fuelNorm) / fuelNorm * 100).toFixed(0);
+            if (diff > 15) {
+                normIndicator = `<span class="norm-badge danger">🔴 +${diff}%</span>`;
+            } else if (diff > 0) {
+                normIndicator = `<span class="norm-badge warning">🟡 +${diff}%</span>`;
+            } else {
+                normIndicator = `<span class="norm-badge ok">🟢 ${diff}%</span>`;
+            }
+        }
 
         return `
             <div class="car-card" data-car-id="${car.id}">
@@ -138,6 +153,7 @@ const Cars = {
                 <div class="car-details">
                     ${car.plate ? `<div class="car-detail">🔢 ${car.plate}</div>` : ''}
                     ${car.color ? `<div class="car-detail">🎨 ${car.color}</div>` : ''}
+                    ${fuelNorm > 0 ? `<div class="car-detail">⛽ Норма: ${fuelNorm} л/100км ${normIndicator}</div>` : ''}
                 </div>
                 <div class="car-stats">
                     <div class="car-stat">
@@ -183,6 +199,8 @@ const Cars = {
             'fuelCarId',
             'expenseCarId',
             'reminderCarId',
+            'maintCarId',
+            'docCarId',
             'statsCarFilter'
         ];
 
@@ -248,6 +266,7 @@ const Cars = {
         document.getElementById('carMileage').value = car.mileage || '';
         document.getElementById('carPlate').value = car.plate || '';
         document.getElementById('carColor').value = car.color || '';
+        document.getElementById('carFuelNorm').value = car.fuelNorm || '';
 
         document.getElementById('carModal').classList.add('active');
     },
@@ -275,7 +294,8 @@ const Cars = {
             year: document.getElementById('carYear').value,
             mileage: document.getElementById('carMileage').value,
             plate: document.getElementById('carPlate').value,
-            color: document.getElementById('carColor').value
+            color: document.getElementById('carColor').value,
+            fuelNorm: document.getElementById('carFuelNorm').value
         };
 
         if (carId) {
