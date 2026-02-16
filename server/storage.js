@@ -304,7 +304,7 @@ class CompanyStorage {
 
     calculateConsumption(carId, currentMileage, liters) {
         const previousRecords = this.data.fuel
-            .filter(f => f.carId === carId && f.mileage < currentMileage && f.fullTank)
+            .filter(f => f.carId === carId && f.mileage > 0 && f.mileage < currentMileage)
             .sort((a, b) => b.mileage - a.mileage);
 
         if (previousRecords.length === 0) return 0;
@@ -315,6 +315,46 @@ class CompanyStorage {
         if (distance <= 0) return 0;
 
         return ((liters / distance) * 100).toFixed(2);
+    }
+
+    recalculateAllConsumption() {
+        let updated = 0;
+        // Group fuel by carId
+        const byCarId = {};
+        this.data.fuel.forEach(f => {
+            if (!byCarId[f.carId]) byCarId[f.carId] = [];
+            byCarId[f.carId].push(f);
+        });
+
+        Object.keys(byCarId).forEach(carId => {
+            const records = byCarId[carId].sort((a, b) => a.mileage - b.mileage);
+            for (let i = 0; i < records.length; i++) {
+                const r = records[i];
+                if (!r.mileage || r.mileage <= 0) {
+                    r.consumption = 0;
+                    continue;
+                }
+                if (i === 0) {
+                    r.consumption = 0;
+                    continue;
+                }
+                const prev = records[i - 1];
+                if (!prev.mileage || prev.mileage <= 0) {
+                    r.consumption = 0;
+                    continue;
+                }
+                const distance = r.mileage - prev.mileage;
+                if (distance <= 0) {
+                    r.consumption = 0;
+                    continue;
+                }
+                r.consumption = ((r.liters / distance) * 100).toFixed(2);
+                updated++;
+            }
+        });
+
+        this.save();
+        return updated;
     }
 
     // ========== EXPENSES ==========

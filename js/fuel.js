@@ -70,12 +70,10 @@ const Fuel = {
      * Розрахунок витрати пального (л/100км)
      */
     calculateConsumption(carId, currentMileage, liters, fullTank, excludeId = null) {
-        if (!fullTank) return 0;
-
         const records = this.getAll(carId).filter(r => {
             if (excludeId && r.id === excludeId) return false;
-            return r.mileage < currentMileage && r.fullTank;
-        });
+            return r.mileage > 0 && r.mileage < currentMileage;
+        }).sort((a, b) => b.mileage - a.mileage);
 
         if (records.length === 0) return 0;
 
