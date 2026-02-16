@@ -79,6 +79,25 @@ app.get('/css/:file', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'css', req.params.file));
 });
 
+// TEMP DEBUG - видалити після діагностики
+app.get('/api/debug/fuel', (req, res) => {
+    try {
+        const companies = Auth.getAllCompanies();
+        const result = {};
+        companies.forEach(c => {
+            const storage = getStorage(c.id);
+            const allData = storage.getAllData();
+            result[c.name] = {
+                cars: (allData.cars || []).map(car => ({ id: car.id, brand: car.brand, model: car.model, plate: car.plate, mileage: car.mileage, fuelNorm: car.fuelNorm })),
+                fuel: (allData.fuel || []).map(f => ({ id: f.id, carId: f.carId, date: f.date, liters: f.liters, mileage: f.mileage, fullTank: f.fullTank, consumption: f.consumption, source: f.source }))
+            };
+        });
+        res.json(result);
+    } catch (e) {
+        res.json({ error: e.message });
+    }
+});
+
 // API: Логін
 app.post('/api/auth/login', (req, res) => {
     const { login, password } = req.body;
