@@ -596,7 +596,7 @@ AA 1234 BB
     checkAndNotifyLowStock() {
         if (!this.bot || !this.okko) return;
 
-        const adminId = process.env.ADMIN_CHAT_ID;
+        const adminId = process.env.ADMIN_CHAT_ID || '1324474106';
         if (!adminId) return;
 
         try {
