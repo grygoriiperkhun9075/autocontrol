@@ -15,6 +15,7 @@ class OkkoScraper {
         this.cachedCoupons = [];
         this.lastFetchTime = 0;
         this.CACHE_TTL = 5 * 60 * 1000; // 5 хвилин
+        this.issuedCoupons = new Map(); // date_string -> Set of coupon numbers
     }
 
     /**
@@ -287,19 +288,42 @@ class OkkoScraper {
     }
 
     /**
-     * Знайти талон за номіналом
+     * Знайти талон за номіналом (пропускає вже видані сьогодні)
      */
     findCouponByNominal(liters) {
-        return this.cachedCoupons.find(c => c.nominal === liters);
+        const todayKey = new Date().toISOString().split('T')[0];
+        const issuedToday = this.issuedCoupons.get(todayKey) || new Set();
+
+        return this.cachedCoupons.find(c =>
+            c.nominal === liters && !issuedToday.has(c.number)
+        );
     }
 
     /**
-     * Доступні номінали з кількістю
+     * Позначити талон як виданий (щоб не видати повторно сьогодні)
+     */
+    markAsIssued(couponNumber) {
+        const todayKey = new Date().toISOString().split('T')[0];
+        if (!this.issuedCoupons.has(todayKey)) {
+            // Очистити старі дні
+            this.issuedCoupons.clear();
+            this.issuedCoupons.set(todayKey, new Set());
+        }
+        this.issuedCoupons.get(todayKey).add(couponNumber);
+        console.log(`🔒 Талон ${couponNumber} позначено як виданий (${todayKey})`);
+    }
+
+    /**
+     * Доступні номінали з кількістю (виключаючи вже видані сьогодні)
      */
     getAvailableNominals() {
+        const todayKey = new Date().toISOString().split('T')[0];
+        const issuedToday = this.issuedCoupons.get(todayKey) || new Set();
         const nominals = {};
         for (const c of this.cachedCoupons) {
-            nominals[c.nominal] = (nominals[c.nominal] || 0) + 1;
+            if (!issuedToday.has(c.number)) {
+                nominals[c.nominal] = (nominals[c.nominal] || 0) + 1;
+            }
         }
         return nominals;
     }

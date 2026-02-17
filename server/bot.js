@@ -568,6 +568,9 @@ AA 1234 BB
                     contentType: 'application/pdf'
                 });
 
+                // Позначаємо талон як виданий (щоб не видати повторно сьогодні)
+                this.okko.markAsIssued(coupon.number);
+
                 if (messageId) {
                     this.bot.editMessageText(`✅ *Талон на ${coupon.nominal} л відправлено!*`, {
                         chat_id: chatId,
