@@ -55,16 +55,40 @@ class MessageParser {
             result.plate = `${plateMatch[1].toUpperCase()} ${plateMatch[2]} ${plateMatch[3].toUpperCase()}`;
         }
 
-        // Парсинг літрів
-        const litersMatch = normalizedText.match(this.patterns.liters);
-        if (litersMatch) {
-            result.liters = parseFloat(litersMatch[1].replace(',', '.'));
-        }
+        // Спочатку пробуємо комбінований шаблон: "Xл по Y.YY"
+        const combinedMatch = normalizedText.match(/(\d+[.,]?\d*)\s*(?:л|літр|литр)\w*\s*(?:по|×|x|\*)\s*(\d+[.,]\d{1,2})/i);
+        if (combinedMatch) {
+            result.liters = parseFloat(combinedMatch[1].replace(',', '.'));
+            result.pricePerLiter = parseFloat(combinedMatch[2].replace(',', '.'));
+        } else {
+            // Парсинг літрів окремо
+            const litersMatch = normalizedText.match(this.patterns.liters);
+            if (litersMatch) {
+                result.liters = parseFloat(litersMatch[1].replace(',', '.'));
+            }
 
-        // Парсинг ціни
-        const priceMatch = normalizedText.match(this.patterns.price);
-        if (priceMatch) {
-            result.pricePerLiter = parseFloat(priceMatch[1].replace(',', '.'));
+            // Парсинг ціни — шукаємо "по X.XX" або "X.XX грн"
+            // Спочатку шукаємо з обов'язковим "по"
+            const priceWithPo = normalizedText.match(/(?:по|ціна|цена|price)\s*[:=]?\s*(\d+[.,]\d{1,2})/i);
+            if (priceWithPo) {
+                result.pricePerLiter = parseFloat(priceWithPo[1].replace(',', '.'));
+            } else {
+                // Потім шукаємо "X.XX грн" (з обов'язковим грн)
+                const priceWithGrn = normalizedText.match(/(\d+[.,]\d{1,2})\s*(?:грн|uah)/i);
+                if (priceWithGrn) {
+                    result.pricePerLiter = parseFloat(priceWithGrn[1].replace(',', '.'));
+                } else {
+                    // Останній fallback: шукаємо десяткове число (XX.XX) що НЕ є частиною літрів
+                    const priceMatch = normalizedText.match(this.patterns.price);
+                    if (priceMatch) {
+                        const priceVal = parseFloat(priceMatch[1].replace(',', '.'));
+                        // Не використовуємо якщо це те ж число що й літри
+                        if (!result.liters || Math.abs(priceVal - result.liters) > 0.01) {
+                            result.pricePerLiter = priceVal;
+                        }
+                    }
+                }
+            }
         }
 
         // Парсинг пробігу - шукаємо числа від 4 до 7 цифр
