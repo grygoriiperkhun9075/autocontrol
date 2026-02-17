@@ -329,6 +329,20 @@ class OkkoScraper {
     }
 
     /**
+     * Номінали з низьким залишком (≤ threshold)
+     */
+    getLowStockNominals(threshold = 1) {
+        const nominals = this.getAvailableNominals();
+        const low = [];
+        for (const [nominal, count] of Object.entries(nominals)) {
+            if (count <= threshold) {
+                low.push({ nominal: parseInt(nominal), count });
+            }
+        }
+        return low;
+    }
+
+    /**
      * Чи налаштований скрейпер
      */
     isConfigured() {

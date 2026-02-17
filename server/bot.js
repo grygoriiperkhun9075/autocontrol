@@ -571,6 +571,9 @@ AA 1234 BB
                 // Позначаємо талон як виданий (щоб не видати повторно сьогодні)
                 this.okko.markAsIssued(coupon.number);
 
+                // Перевіряємо залишок талонів і повідомляємо адміна
+                this.checkAndNotifyLowStock();
+
                 if (messageId) {
                     this.bot.editMessageText(`✅ *Талон на ${coupon.nominal} л відправлено!*`, {
                         chat_id: chatId,
@@ -584,6 +587,64 @@ AA 1234 BB
         } catch (error) {
             console.error('❌ Помилка генерації талону:', error);
             this.bot.sendMessage(chatId, '❌ Помилка генерації талону. Спробуйте ще раз.');
+        }
+    }
+
+    /**
+     * Перевірка залишку талонів і повідомлення адміну
+     */
+    checkAndNotifyLowStock() {
+        if (!this.bot || !this.okko) return;
+
+        const adminId = process.env.ADMIN_CHAT_ID;
+        if (!adminId) return;
+
+        try {
+            const lowStock = this.okko.getLowStockNominals(1);
+            if (lowStock.length === 0) return;
+
+            // Дебаунс: не більше 1 повідомлення на номінал на день
+            const todayKey = new Date().toISOString().split('T')[0];
+            if (!this._lowStockNotified) this._lowStockNotified = new Map();
+
+            const newLow = lowStock.filter(item => {
+                const key = `${todayKey}_${item.nominal}`;
+                if (this._lowStockNotified.has(key)) return false;
+                this._lowStockNotified.set(key, true);
+                return true;
+            });
+
+            if (newLow.length === 0) return;
+
+            // Очищаємо старі записи
+            for (const [key] of this._lowStockNotified) {
+                if (!key.startsWith(todayKey)) this._lowStockNotified.delete(key);
+            }
+
+            const nominals = this.okko.getAvailableNominals();
+            let text = `⚠️ *Низький залишок талонів OKKO!*\n\n`;
+
+            newLow.forEach(item => {
+                const emoji = item.count === 0 ? '🔴' : '🟡';
+                text += `${emoji} *${item.nominal} л* — залишилось: ${item.count} шт\n`;
+            });
+
+            text += `\n📊 *Всі залишки:*\n`;
+            for (const [nom, count] of Object.entries(nominals).sort((a, b) => a[0] - b[0])) {
+                text += `• ${nom} л — ${count} шт\n`;
+            }
+
+            text += `\n🔗 [Замовити на OKKO SSP](https://ssp-online.okko.ua)\n`;
+            text += `\n💡 _Зайдіть в кабінет OKKO SSP → Талони → Замовити нові_`;
+
+            this.bot.sendMessage(adminId, text, {
+                parse_mode: 'Markdown',
+                disable_web_page_preview: true
+            });
+
+            console.log(`📢 Відправлено сповіщення про низький залишок талонів адміну`);
+        } catch (error) {
+            console.error('❌ Low stock check error:', error.message);
         }
     }
 
