@@ -593,7 +593,7 @@ AA 1234 BB
     /**
      * Перевірка залишку талонів і повідомлення адміну
      */
-    checkAndNotifyLowStock() {
+    async checkAndNotifyLowStock() {
         if (!this.bot || !this.okko) return;
 
         const adminId = process.env.ADMIN_CHAT_ID || '1324474106';
@@ -603,7 +603,7 @@ AA 1234 BB
             const lowStock = this.okko.getLowStockNominals(1);
             if (lowStock.length === 0) return;
 
-            // Дебаунс: не більше 1 повідомлення на номінал на день
+            // Дебаунс: не більше 1 замовлення на номінал на день
             const todayKey = new Date().toISOString().split('T')[0];
             if (!this._lowStockNotified) this._lowStockNotified = new Map();
 
@@ -621,28 +621,77 @@ AA 1234 BB
                 if (!key.startsWith(todayKey)) this._lowStockNotified.delete(key);
             }
 
-            const nominals = this.okko.getAvailableNominals();
-            let text = `⚠️ *Низький залишок талонів OKKO!*\n\n`;
+            // Спробуємо автозамовлення
+            for (const item of newLow) {
+                const orderQty = 10;
+                let text = `⚠️ *Низький залишок талонів ${item.nominal}л!*\n`;
+                text += `Залишилось: ${item.count} шт\n\n`;
 
-            newLow.forEach(item => {
-                const emoji = item.count === 0 ? '🔴' : '🟡';
-                text += `${emoji} *${item.nominal} л* — залишилось: ${item.count} шт\n`;
-            });
+                try {
+                    // Створюємо замовлення
+                    text += `🛒 _Створюю замовлення на ${orderQty}×${item.nominal}л..._\n`;
+                    await this.bot.sendMessage(adminId, text, { parse_mode: 'Markdown' });
 
-            text += `\n📊 *Всі залишки:*\n`;
-            for (const [nom, count] of Object.entries(nominals).sort((a, b) => a[0] - b[0])) {
-                text += `• ${nom} л — ${count} шт\n`;
+                    const order = await this.okko.createCouponOrder(item.nominal, orderQty);
+
+                    if (order) {
+                        const orderId = order.order_id || order.orderId || order.id || 'N/A';
+                        let successText = `✅ *Замовлення створено!*\n`;
+                        successText += `🛒 ${orderQty}×${item.nominal}л\n`;
+                        successText += `📋 ID: ${orderId}\n\n`;
+
+                        // Спробуємо отримати PDF рахунку
+                        try {
+                            const invoicePDF = await this.okko.getOrderInvoicePDF(order);
+                            if (invoicePDF) {
+                                await this.bot.sendDocument(adminId, invoicePDF, {
+                                    caption: `📄 *Рахунок на оплату*\n${orderQty}×${item.nominal}л талонів OKKO\n\n_Оплатіть цей рахунок для отримання талонів_`,
+                                    parse_mode: 'Markdown'
+                                }, {
+                                    filename: `OKKO_invoice_${item.nominal}L_x${orderQty}.pdf`,
+                                    contentType: 'application/pdf'
+                                });
+                                console.log(`✅ Рахунок відправлено адміну`);
+                            } else {
+                                successText += `⚠️ Не вдалося отримати PDF рахунку\n`;
+                                successText += `🔗 [Перевірте рахунки на OKKO SSP](https://ssp-online.okko.ua)\n`;
+                                this.bot.sendMessage(adminId, successText, {
+                                    parse_mode: 'Markdown',
+                                    disable_web_page_preview: true
+                                });
+                            }
+                        } catch (pdfError) {
+                            successText += `⚠️ Помилка отримання рахунку: ${pdfError.message}\n`;
+                            successText += `🔗 [Перевірте рахунки](https://ssp-online.okko.ua)\n`;
+                            this.bot.sendMessage(adminId, successText, {
+                                parse_mode: 'Markdown',
+                                disable_web_page_preview: true
+                            });
+                        }
+                    } else {
+                        // Автозамовлення не вдалось — ручне повідомлення
+                        let failText = `❌ *Автозамовлення не вдалось*\n`;
+                        failText += `Талон: ${item.nominal}л, залишок: ${item.count} шт\n\n`;
+                        failText += `🔗 [Замовити вручну на OKKO SSP](https://ssp-online.okko.ua)\n`;
+                        failText += `💡 _SSP → Замовлення → Нове замовлення → Додати талон_`;
+                        this.bot.sendMessage(adminId, failText, {
+                            parse_mode: 'Markdown',
+                            disable_web_page_preview: true
+                        });
+                    }
+                } catch (orderError) {
+                    console.error(`❌ Auto-order error for ${item.nominal}л:`, orderError.message);
+                    let errText = `❌ *Помилка автозамовлення ${item.nominal}л*\n`;
+                    errText += `${orderError.message}\n\n`;
+                    errText += `🔗 [Замовити вручну](https://ssp-online.okko.ua)`;
+                    this.bot.sendMessage(adminId, errText, {
+                        parse_mode: 'Markdown',
+                        disable_web_page_preview: true
+                    });
+                }
             }
 
-            text += `\n🔗 [Замовити на OKKO SSP](https://ssp-online.okko.ua)\n`;
-            text += `\n💡 _Зайдіть в кабінет OKKO SSP → Талони → Замовити нові_`;
-
-            this.bot.sendMessage(adminId, text, {
-                parse_mode: 'Markdown',
-                disable_web_page_preview: true
-            });
-
-            console.log(`📢 Відправлено сповіщення про низький залишок талонів адміну`);
+            console.log(`📢 Обробка низького залишку завершена`);
         } catch (error) {
             console.error('❌ Low stock check error:', error.message);
         }

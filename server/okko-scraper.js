@@ -343,6 +343,228 @@ class OkkoScraper {
     }
 
     /**
+     * Попередній розрахунок замовлення талонів
+     * @param {number} nominal - номінал в літрах (напр. 10, 20, 40)
+     * @param {number} quantity - кількість талонів
+     * @param {string} fuelType - тип пального (напр. 'diesel')
+     * @returns {Object|null} - розрахунок замовлення
+     */
+    async preorderCoupons(nominal, quantity, fuelType = 'diesel') {
+        try {
+            if (!this.token) await this.authenticate();
+            if (!this.contractId) await this.findCouponContract();
+
+            console.log(`📋 OKKO Order: Попередній розрахунок ${quantity}×${nominal}л...`);
+
+            const body = JSON.stringify({
+                contract_id: this.contractId,
+                items: [{
+                    nominal: nominal * 1000, // API очікує в мілілітрах
+                    quantity: quantity,
+                    product_type: fuelType
+                }]
+            });
+
+            const resp = await this._request(
+                `${this.baseUrl}/proxy-service/contract/preorder/coupon`,
+                {
+                    method: 'POST',
+                    body,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(body).toString()
+                    }
+                }
+            );
+
+            console.log(`📋 OKKO Preorder: Status ${resp.status}`);
+
+            if (resp.status === 200) {
+                const data = resp.json();
+                console.log(`✅ OKKO Preorder: ${JSON.stringify(data)}`);
+                return data;
+            }
+
+            console.error(`❌ OKKO Preorder: ${resp.status} ${resp.body.substring(0, 300)}`);
+            return null;
+        } catch (error) {
+            console.error('❌ OKKO Preorder error:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Створення замовлення на талони
+     * @param {number} nominal - номінал в літрах
+     * @param {number} quantity - кількість
+     * @param {string} fuelType - тип пального
+     * @returns {Object|null} - створене замовлення з orderId
+     */
+    async createCouponOrder(nominal, quantity, fuelType = 'diesel') {
+        try {
+            if (!this.token) await this.authenticate();
+            if (!this.contractId) await this.findCouponContract();
+
+            console.log(`🛒 OKKO Order: Створення замовлення ${quantity}×${nominal}л...`);
+
+            const body = JSON.stringify({
+                contract_id: this.contractId,
+                type: 'coupons',
+                items: [{
+                    nominal: nominal * 1000,
+                    quantity: quantity,
+                    product_type: fuelType,
+                    validity_period: 3 // 3 місяці
+                }]
+            });
+
+            const resp = await this._request(
+                `${this.baseUrl}/proxy-service/orders/init`,
+                {
+                    method: 'POST',
+                    body,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(body).toString()
+                    }
+                }
+            );
+
+            console.log(`🛒 OKKO Order: Status ${resp.status}`);
+
+            if (resp.status === 200 || resp.status === 201) {
+                const data = resp.json();
+                console.log(`✅ OKKO Order: Замовлення створено! ${JSON.stringify(data)}`);
+                return data;
+            }
+
+            // Якщо 401 — re-auth
+            if (resp.status === 401) {
+                console.log('🔄 OKKO Order: Re-auth...');
+                this.token = null;
+                await this.authenticate();
+
+                const retry = await this._request(
+                    `${this.baseUrl}/proxy-service/orders/init`,
+                    {
+                        method: 'POST',
+                        body,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Content-Length': Buffer.byteLength(body).toString()
+                        }
+                    }
+                );
+
+                if (retry.status === 200 || retry.status === 201) {
+                    const data = retry.json();
+                    console.log(`✅ OKKO Order: Замовлення створено після re-auth!`);
+                    return data;
+                }
+                console.error(`❌ OKKO Order retry: ${retry.status} ${retry.body.substring(0, 300)}`);
+            }
+
+            console.error(`❌ OKKO Order: ${resp.status} ${resp.body.substring(0, 300)}`);
+            return null;
+        } catch (error) {
+            console.error('❌ OKKO Order error:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Отримання PDF рахунку для замовлення
+     * @param {Object} order - об'єкт замовлення з createCouponOrder
+     * @returns {Buffer|null} - PDF рахунку
+     */
+    async getOrderInvoicePDF(order) {
+        try {
+            if (!this.token) await this.authenticate();
+
+            const orderId = order.order_id || order.orderId || order.id;
+            console.log(`📄 OKKO Invoice: Отримую рахунок для замовлення ${orderId}...`);
+
+            // Спочатку отримуємо реквізити оплати
+            const reqResp = await this._request(
+                `${this.baseUrl}/proxy-service/payment_requisites?order_id=${orderId}&contract_id=${this.contractId}`
+            );
+
+            console.log(`📄 OKKO Requisites: Status ${reqResp.status}`);
+            if (reqResp.status === 200) {
+                console.log(`📄 OKKO Requisites: ${reqResp.body.substring(0, 300)}`);
+            }
+
+            // Отримуємо PDF рахунку
+            const body = JSON.stringify({
+                order_id: orderId,
+                contract_id: this.contractId
+            });
+
+            const pdfResp = await this._requestBinary(
+                `${this.baseUrl}/proxy-service/pdf/invoice/coupons`,
+                {
+                    method: 'POST',
+                    body,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(body).toString()
+                    }
+                }
+            );
+
+            console.log(`📄 OKKO Invoice PDF: Status ${pdfResp.status}, Size: ${pdfResp.buffer.length}`);
+
+            if (pdfResp.status === 200 && pdfResp.buffer.length > 100) {
+                const header = pdfResp.buffer.toString('utf8', 0, 5);
+                if (header === '%PDF-') {
+                    console.log(`✅ OKKO Invoice: PDF отримано (${pdfResp.buffer.length} bytes)`);
+                    return pdfResp.buffer;
+                }
+                // Може бути JSON з посиланням на PDF
+                console.log(`⚠️ OKKO Invoice: Відповідь не PDF, Header: ${header}`);
+                console.log(`⚠️ Body: ${pdfResp.buffer.toString('utf8', 0, 300)}`);
+            }
+
+            return null;
+        } catch (error) {
+            console.error('❌ OKKO Invoice error:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Автозамовлення талонів при низькому залишку
+     * @param {number} threshold - мінімальна кількість (за замовч. 1)
+     * @param {number} orderQuantity - скільки замовляти (за замовч. 10)
+     * @returns {Object|null} - результат замовлення
+     */
+    async autoOrderIfLowStock(threshold = 1, orderQuantity = 10) {
+        try {
+            const lowStock = this.getLowStockNominals(threshold);
+            if (lowStock.length === 0) {
+                console.log('✅ OKKO: Всі номінали в достатній кількості');
+                return null;
+            }
+
+            console.log(`⚠️ OKKO: Низький залишок: ${lowStock.map(i => `${i.nominal}л(${i.count})`).join(', ')}`);
+
+            const results = [];
+            for (const item of lowStock) {
+                console.log(`🛒 OKKO: Замовляю ${orderQuantity}×${item.nominal}л...`);
+                const order = await this.createCouponOrder(item.nominal, orderQuantity);
+                if (order) {
+                    results.push({ nominal: item.nominal, order });
+                }
+            }
+
+            return results.length > 0 ? results : null;
+        } catch (error) {
+            console.error('❌ OKKO AutoOrder error:', error.message);
+            return null;
+        }
+    }
+
+    /**
      * Чи налаштований скрейпер
      */
     isConfigured() {
