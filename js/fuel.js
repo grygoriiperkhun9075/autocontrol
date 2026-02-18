@@ -131,6 +131,18 @@ const Fuel = {
     filterByPeriod(records, period) {
         const now = new Date();
 
+        // Handle object format {type: 'custom', from: '...', to: '...'}
+        if (period && typeof period === 'object' && period.type === 'custom') {
+            const from = period.from ? new Date(period.from) : null;
+            const to = period.to ? new Date(period.to + 'T23:59:59') : null;
+            return records.filter(r => {
+                const d = new Date(r.date);
+                if (from && d < from) return false;
+                if (to && d > to) return false;
+                return true;
+            });
+        }
+
         switch (period) {
             case 'week':
                 const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
@@ -141,6 +153,16 @@ const Fuel = {
             case 'year':
                 const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
                 return records.filter(r => new Date(r.date) >= yearAgo);
+            case 'custom': {
+                const from = App.customDateFrom ? new Date(App.customDateFrom) : null;
+                const to = App.customDateTo ? new Date(App.customDateTo + 'T23:59:59') : null;
+                return records.filter(r => {
+                    const d = new Date(r.date);
+                    if (from && d < from) return false;
+                    if (to && d > to) return false;
+                    return true;
+                });
+            }
             default:
                 return records;
         }

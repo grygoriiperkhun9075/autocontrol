@@ -105,7 +105,13 @@
                             <option value="year">За рік</option>
                             <option value="month">За місяць</option>
                             <option value="week">За тиждень</option>
+                            <option value="custom">Довільний період</option>
                         </select>
+                        <div class="date-range-picker" id="dashboardDateRange" style="display: none;">
+                            <input type="date" id="dashboardDateFrom" title="Від">
+                            <span class="date-range-sep">—</span>
+                            <input type="date" id="dashboardDateTo" title="До">
+                        </div>
                     </div>
                 </div>
             </header>
@@ -462,7 +468,13 @@
                         <option value="all">За весь час</option>
                         <option value="year">За рік</option>
                         <option value="month">За місяць</option>
+                        <option value="custom">Довільний період</option>
                     </select>
+                    <div class="date-range-picker" id="statsDateRange" style="display: none;">
+                        <input type="date" id="statsDateFrom" title="Від">
+                        <span class="date-range-sep">—</span>
+                        <input type="date" id="statsDateTo" title="До">
+                    </div>
                 </div>
                 <div class="charts-grid">
                     <div class="chart-card full-width">

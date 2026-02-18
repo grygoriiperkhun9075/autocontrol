@@ -6,6 +6,8 @@ const App = {
     currentSection: 'dashboard',
     currentCar: null,
     currentPeriod: 'all',
+    customDateFrom: null,
+    customDateTo: null,
 
     /**
      * Ініціалізація додатку
@@ -254,10 +256,41 @@ const App = {
      */
     initPeriodSelector() {
         var periodSelect = document.getElementById('currentPeriodSelect');
+        var dateRange = document.getElementById('dashboardDateRange');
+        var dateFrom = document.getElementById('dashboardDateFrom');
+        var dateTo = document.getElementById('dashboardDateTo');
+
         if (periodSelect) {
             periodSelect.addEventListener('change', (e) => {
                 this.currentPeriod = e.target.value || 'all';
+                if (this.currentPeriod === 'custom') {
+                    dateRange.style.display = 'flex';
+                    // Default: last month
+                    if (!dateFrom.value) {
+                        const now = new Date();
+                        dateTo.value = now.toISOString().split('T')[0];
+                        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+                        dateFrom.value = monthAgo.toISOString().split('T')[0];
+                    }
+                    this.customDateFrom = dateFrom.value;
+                    this.customDateTo = dateTo.value;
+                } else {
+                    dateRange.style.display = 'none';
+                }
                 this.renderSection(this.currentSection);
+            });
+        }
+
+        if (dateFrom) {
+            dateFrom.addEventListener('change', () => {
+                this.customDateFrom = dateFrom.value;
+                if (this.currentPeriod === 'custom') this.renderSection(this.currentSection);
+            });
+        }
+        if (dateTo) {
+            dateTo.addEventListener('change', () => {
+                this.customDateTo = dateTo.value;
+                if (this.currentPeriod === 'custom') this.renderSection(this.currentSection);
             });
         }
     },
@@ -364,9 +397,39 @@ const App = {
         }
 
         var statsPeriodFilter = document.getElementById('statsPeriodFilter');
+        var statsDateRange = document.getElementById('statsDateRange');
+        var statsDateFrom = document.getElementById('statsDateFrom');
+        var statsDateTo = document.getElementById('statsDateTo');
+
         if (statsPeriodFilter) {
             statsPeriodFilter.addEventListener('change', () => {
+                if (statsPeriodFilter.value === 'custom') {
+                    statsDateRange.style.display = 'flex';
+                    if (!statsDateFrom.value) {
+                        const now = new Date();
+                        statsDateTo.value = now.toISOString().split('T')[0];
+                        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+                        statsDateFrom.value = monthAgo.toISOString().split('T')[0];
+                    }
+                } else {
+                    statsDateRange.style.display = 'none';
+                }
                 Charts.updateStatistics(this.currentCar, this.getStatsPeriod());
+            });
+        }
+
+        if (statsDateFrom) {
+            statsDateFrom.addEventListener('change', () => {
+                if (statsPeriodFilter && statsPeriodFilter.value === 'custom') {
+                    Charts.updateStatistics(this.currentCar, this.getStatsPeriod());
+                }
+            });
+        }
+        if (statsDateTo) {
+            statsDateTo.addEventListener('change', () => {
+                if (statsPeriodFilter && statsPeriodFilter.value === 'custom') {
+                    Charts.updateStatistics(this.currentCar, this.getStatsPeriod());
+                }
             });
         }
     },
@@ -376,7 +439,15 @@ const App = {
      */
     getStatsPeriod() {
         var filter = document.getElementById('statsPeriodFilter');
-        return (filter && filter.value) || 'all';
+        var period = (filter && filter.value) || 'all';
+        if (period === 'custom') {
+            return {
+                type: 'custom',
+                from: document.getElementById('statsDateFrom')?.value || null,
+                to: document.getElementById('statsDateTo')?.value || null
+            };
+        }
+        return period;
     },
 
     /**
