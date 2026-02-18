@@ -344,25 +344,23 @@ class OkkoScraper {
 
     /**
      * Попередній розрахунок замовлення талонів
-     * @param {number} nominal - номінал в літрах (напр. 10, 20, 40)
+     * @param {number} nominal - номінал в літрах (напр. 10, 20, 50)
      * @param {number} quantity - кількість талонів
-     * @param {string} fuelType - тип пального (напр. 'diesel')
      * @returns {Object|null} - розрахунок замовлення
      */
-    async preorderCoupons(nominal, quantity, fuelType = 'diesel') {
+    async preorderCoupons(nominal, quantity) {
         try {
             if (!this.token) await this.authenticate();
             if (!this.contractId) await this.findCouponContract();
 
-            console.log(`📋 OKKO Order: Попередній розрахунок ${quantity}×${nominal}л...`);
+            console.log(`📋 OKKO Preorder: ${quantity}×${nominal}л...`);
 
             const body = JSON.stringify({
+                amount: nominal * 1000, // API: мілілітри
                 contract_id: this.contractId,
-                items: [{
-                    nominal: nominal * 1000, // API очікує в мілілітрах
-                    quantity: quantity,
-                    product_type: fuelType
-                }]
+                duration: 'M3', // 3 місяці
+                group_merch_id: 92,
+                product_id: 9018 // Дизельне паливо
             });
 
             const resp = await this._request(
@@ -385,7 +383,7 @@ class OkkoScraper {
                 return data;
             }
 
-            console.error(`❌ OKKO Preorder: ${resp.status} ${resp.body.substring(0, 300)}`);
+            console.error(`❌ OKKO Preorder: ${resp.status} ${resp.body.substring(0, 500)}`);
             return null;
         } catch (error) {
             console.error('❌ OKKO Preorder error:', error.message);
@@ -395,57 +393,38 @@ class OkkoScraper {
 
     /**
      * Створення замовлення на талони
+     * Реальний ендпоінт: POST /proxy-service/contract/coupon
      * @param {number} nominal - номінал в літрах
      * @param {number} quantity - кількість
-     * @param {string} fuelType - тип пального
-     * @returns {Object|null} - створене замовлення з orderId
+     * @returns {Object|null} - створене замовлення
      */
-    async createCouponOrder(nominal, quantity, fuelType = 'diesel') {
+    async createCouponOrder(nominal, quantity) {
         try {
             if (!this.token) await this.authenticate();
             if (!this.contractId) await this.findCouponContract();
 
             console.log(`🛒 OKKO Order: Створення замовлення ${quantity}×${nominal}л...`);
 
-            const body = JSON.stringify({
-                contract_id: this.contractId,
-                type: 'coupons',
-                items: [{
-                    nominal: nominal * 1000,
-                    quantity: quantity,
-                    product_type: fuelType,
-                    validity_period: 3 // 3 місяці
-                }]
-            });
-
-            const resp = await this._request(
-                `${this.baseUrl}/proxy-service/orders/init`,
-                {
-                    method: 'POST',
-                    body,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Content-Length': Buffer.byteLength(body).toString()
-                    }
-                }
-            );
-
-            console.log(`🛒 OKKO Order: Status ${resp.status}`);
-
-            if (resp.status === 200 || resp.status === 201) {
-                const data = resp.json();
-                console.log(`✅ OKKO Order: Замовлення створено! ${JSON.stringify(data)}`);
-                return data;
+            // Кожен item = 1 талон; кількість = кількість items
+            const orderItems = [];
+            for (let i = 0; i < quantity; i++) {
+                orderItems.push({
+                    amount: nominal * 1000,       // мілілітри
+                    duration: 'M3',               // 3 місяці
+                    group_merch_id: 92,
+                    nominal: nominal * 1000,      // мілілітри
+                    product_id: 9018              // Дизельне паливо
+                });
             }
 
-            // Якщо 401 — re-auth
-            if (resp.status === 401) {
-                console.log('🔄 OKKO Order: Re-auth...');
-                this.token = null;
-                await this.authenticate();
+            const body = JSON.stringify({
+                contract_id: this.contractId,
+                order_items: orderItems
+            });
 
-                const retry = await this._request(
-                    `${this.baseUrl}/proxy-service/orders/init`,
+            const makeRequest = async () => {
+                return await this._request(
+                    `${this.baseUrl}/proxy-service/contract/coupon`,
                     {
                         method: 'POST',
                         body,
@@ -455,16 +434,27 @@ class OkkoScraper {
                         }
                     }
                 );
+            };
 
-                if (retry.status === 200 || retry.status === 201) {
-                    const data = retry.json();
-                    console.log(`✅ OKKO Order: Замовлення створено після re-auth!`);
-                    return data;
-                }
-                console.error(`❌ OKKO Order retry: ${retry.status} ${retry.body.substring(0, 300)}`);
+            let resp = await makeRequest();
+            console.log(`🛒 OKKO Order: Status ${resp.status}`);
+
+            // Re-auth якщо 401
+            if (resp.status === 401) {
+                console.log('🔄 OKKO Order: Re-auth...');
+                this.token = null;
+                await this.authenticate();
+                resp = await makeRequest();
+                console.log(`🛒 OKKO Order retry: Status ${resp.status}`);
             }
 
-            console.error(`❌ OKKO Order: ${resp.status} ${resp.body.substring(0, 300)}`);
+            if (resp.status === 200 || resp.status === 201) {
+                const data = resp.json();
+                console.log(`✅ OKKO Order: Замовлення створено! ${JSON.stringify(data).substring(0, 500)}`);
+                return data;
+            }
+
+            console.error(`❌ OKKO Order: ${resp.status} ${resp.body.substring(0, 500)}`);
             return null;
         } catch (error) {
             console.error('❌ OKKO Order error:', error.message);
@@ -474,40 +464,80 @@ class OkkoScraper {
 
     /**
      * Отримання PDF рахунку для замовлення
+     * 1. GET /proxy-service/payment_requisites — отримуємо реквізити
+     * 2. POST /userdata-service/pdf/invoice/coupons — генеруємо PDF
      * @param {Object} order - об'єкт замовлення з createCouponOrder
+     * @param {number} nominal - номінал в літрах (для побудови orders масиву)
+     * @param {number} quantity - кількість талонів
      * @returns {Buffer|null} - PDF рахунку
      */
-    async getOrderInvoicePDF(order) {
+    async getOrderInvoicePDF(order, nominal, quantity) {
         try {
             if (!this.token) await this.authenticate();
 
             const orderId = order.order_id || order.orderId || order.id;
             console.log(`📄 OKKO Invoice: Отримую рахунок для замовлення ${orderId}...`);
 
-            // Спочатку отримуємо реквізити оплати
+            // 1. Отримуємо реквізити оплати
             const reqResp = await this._request(
-                `${this.baseUrl}/proxy-service/payment_requisites?order_id=${orderId}&contract_id=${this.contractId}`
+                `${this.baseUrl}/proxy-service/payment_requisites?contract_id=${this.contractId}&order_id=${orderId}`
             );
 
             console.log(`📄 OKKO Requisites: Status ${reqResp.status}`);
-            if (reqResp.status === 200) {
-                console.log(`📄 OKKO Requisites: ${reqResp.body.substring(0, 300)}`);
+
+            if (reqResp.status !== 200) {
+                console.error(`❌ OKKO Requisites: ${reqResp.status} ${reqResp.body.substring(0, 300)}`);
+                return null;
             }
 
-            // Отримуємо PDF рахунку
-            const body = JSON.stringify({
-                order_id: orderId,
-                contract_id: this.contractId
+            const req = reqResp.json();
+            console.log(`📄 OKKO Requisites: ${JSON.stringify(req).substring(0, 500)}`);
+
+            // Ціна одного талону = загальна сума / кількість
+            const totalAmount = req.amount || 0;
+            const pricePerItem = quantity > 0 ? Math.round(totalAmount / quantity) : totalAmount;
+
+            // Формат дати з timezone
+            const formatDate = (dateStr) => {
+                if (!dateStr) return new Date().toISOString();
+                // Додаємо timezone якщо не вказано
+                if (!dateStr.includes('+') && !dateStr.includes('Z')) {
+                    return dateStr + '+02:00';
+                }
+                return dateStr;
+            };
+
+            // 2. Формуємо запит на PDF рахунку
+            const pdfBody = JSON.stringify({
+                client_name: req.client_company_name || req.client_name || '',
+                company_edrpou: req.company_edrpou || '',
+                company_name: req.company_name || '',
+                contract_id: this.contractId,
+                contract_name: req.contract_name || '24ТЛБЗ-19582/23',
+                contract_sale_office: req.contract_sale_office || '3902',
+                iban: req.iban || '',
+                total_amount: totalAmount,
+                expires_date: formatDate(req.expires),
+                order_date: formatDate(req.date),
+                order_id: String(orderId),
+                orders: [{
+                    amount: totalAmount,
+                    fuel_name: 'Дизельне паливо',
+                    price: pricePerItem,
+                    volume: (nominal || 50) * 1000
+                }]
             });
 
+            console.log(`📄 OKKO Invoice PDF request: ${pdfBody.substring(0, 500)}`);
+
             const pdfResp = await this._requestBinary(
-                `${this.baseUrl}/proxy-service/pdf/invoice/coupons`,
+                `${this.baseUrl}/userdata-service/pdf/invoice/coupons`,
                 {
                     method: 'POST',
-                    body,
+                    body: pdfBody,
                     headers: {
                         'Content-Type': 'application/json',
-                        'Content-Length': Buffer.byteLength(body).toString()
+                        'Content-Length': Buffer.byteLength(pdfBody).toString()
                     }
                 }
             );
@@ -520,9 +550,8 @@ class OkkoScraper {
                     console.log(`✅ OKKO Invoice: PDF отримано (${pdfResp.buffer.length} bytes)`);
                     return pdfResp.buffer;
                 }
-                // Може бути JSON з посиланням на PDF
-                console.log(`⚠️ OKKO Invoice: Відповідь не PDF, Header: ${header}`);
-                console.log(`⚠️ Body: ${pdfResp.buffer.toString('utf8', 0, 300)}`);
+                console.log(`⚠️ OKKO Invoice: Not PDF. Header: ${header}`);
+                console.log(`⚠️ Body: ${pdfResp.buffer.toString('utf8', 0, 500)}`);
             }
 
             return null;

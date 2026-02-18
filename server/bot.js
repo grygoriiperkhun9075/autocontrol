@@ -642,7 +642,7 @@ AA 1234 BB
 
                         // Спробуємо отримати PDF рахунку
                         try {
-                            const invoicePDF = await this.okko.getOrderInvoicePDF(order);
+                            const invoicePDF = await this.okko.getOrderInvoicePDF(order, item.nominal, orderQty);
                             if (invoicePDF) {
                                 await this.bot.sendDocument(adminId, invoicePDF, {
                                     caption: `📄 *Рахунок на оплату*\n${orderQty}×${item.nominal}л талонів OKKO\n\n_Оплатіть цей рахунок для отримання талонів_`,
