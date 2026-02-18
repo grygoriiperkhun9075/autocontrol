@@ -17,7 +17,7 @@ class OkkoScraper {
         this.CACHE_TTL = 5 * 60 * 1000; // 5 хвилин
         this.issuedCoupons = new Map(); // date_string -> Set of coupon numbers
         this.tokenTime = 0; // час отримання токену
-        this.TOKEN_TTL = 25 * 60 * 1000; // кеш токену 25 хвилин
+        this.TOKEN_TTL = 55 * 60 * 1000; // кеш токену 55 хвилин
     }
 
     /**
@@ -86,55 +86,64 @@ class OkkoScraper {
                 return true;
             }
 
-            console.log('🔐 OKKO: Авторизація...');
-
             const body = JSON.stringify({
                 login: this.login,
                 password: this.password
             });
 
-            const resp = await this._request(`${this.baseUrl}/proxy-service/login`, {
-                method: 'POST',
-                body,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(body).toString()
-                }
-            });
+            // Спроба логіну з ретраями (OKKO може повертати 401 при повторних спробах)
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                console.log(`🔐 OKKO: Авторизація... (спроба ${attempt}/3)`);
 
-            console.log(`🔐 OKKO: Login status: ${resp.status}`);
-
-            if (resp.status === 200 || resp.status === 201) {
-                const data = resp.json();
-                this.token = data?.token || data?.accessToken || data?.access_token || null;
-
-                if (!this.token) {
-                    // Токен може бути в headers
-                    const authHeader = resp.headers['authorization'];
-                    if (authHeader) {
-                        this.token = authHeader.replace('Bearer ', '');
+                const resp = await this._request(`${this.baseUrl}/proxy-service/login`, {
+                    method: 'POST',
+                    body,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(body).toString()
                     }
-                }
+                });
 
-                if (!this.token) {
-                    // Може весь body — це токен (JWT string)
-                    if (typeof resp.body === 'string' && resp.body.includes('.') && resp.body.length > 50) {
-                        this.token = resp.body.trim().replace(/"/g, '');
+                console.log(`🔐 OKKO: Login status: ${resp.status}`);
+
+                if (resp.status === 200 || resp.status === 201) {
+                    const data = resp.json();
+                    this.token = data?.token || data?.accessToken || data?.access_token || null;
+
+                    if (!this.token) {
+                        const authHeader = resp.headers['authorization'];
+                        if (authHeader) {
+                            this.token = authHeader.replace('Bearer ', '');
+                        }
                     }
+
+                    if (!this.token) {
+                        if (typeof resp.body === 'string' && resp.body.includes('.') && resp.body.length > 50) {
+                            this.token = resp.body.trim().replace(/"/g, '');
+                        }
+                    }
+
+                    if (this.token) {
+                        this.tokenTime = Date.now();
+                        console.log(`✅ OKKO: Токен отримано (${this.token.substring(0, 20)}...)`);
+                    } else {
+                        console.log(`⚠️ OKKO: Login 200, але токен не знайдено`);
+                        console.log(`⚠️ OKKO: Body: ${resp.body.substring(0, 300)}`);
+                    }
+                    return true;
                 }
 
-                if (this.token) {
-                    this.tokenTime = Date.now();
-                    console.log(`✅ OKKO: Токен отримано (${this.token.substring(0, 20)}...)`);
-                } else {
-                    console.log(`⚠️ OKKO: Login 200, але токен не знайдено`);
-                    console.log(`⚠️ OKKO: Body: ${resp.body.substring(0, 300)}`);
-                    console.log(`⚠️ OKKO: Headers: ${JSON.stringify(resp.headers).substring(0, 300)}`);
+                // 401/403 — чекаємо і пробуємо знову
+                if ((resp.status === 401 || resp.status === 403) && attempt < 3) {
+                    const delay = attempt * 5000; // 5с, 10с
+                    console.log(`⏳ OKKO: Login ${resp.status}, чекаю ${delay / 1000}с перед повтором...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    continue;
                 }
-                return true;
+
+                console.error(`❌ OKKO: Login failed ${resp.status}: ${resp.body.substring(0, 200)}`);
             }
 
-            console.error(`❌ OKKO: Login failed ${resp.status}: ${resp.body.substring(0, 200)}`);
             return false;
         } catch (error) {
             console.error('❌ OKKO: Login error:', error.message);
