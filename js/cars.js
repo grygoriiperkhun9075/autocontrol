@@ -109,6 +109,23 @@ const Cars = {
     },
 
     /**
+     * Вартість кілометра (всі витрати / пройдена відстань)
+     */
+    getCostPerKm(carId) {
+        const car = this.getById(carId);
+        if (!car) return 0;
+
+        const initialMileage = parseInt(car.mileage) || 0;
+        const currentMileage = this.getCurrentMileage(carId);
+        const distanceDriven = currentMileage - initialMileage;
+
+        if (distanceDriven <= 0) return 0;
+
+        const totalExpenses = this.getTotalExpenses(carId);
+        return totalExpenses / distanceDriven;
+    },
+
+    /**
      * Форматування назви авто
      */
     getDisplayName(carId) {
@@ -124,6 +141,7 @@ const Cars = {
         const mileage = this.getCurrentMileage(car.id);
         const consumption = this.getAverageConsumption(car.id);
         const expenses = this.getTotalExpenses(car.id);
+        const costPerKm = this.getCostPerKm(car.id);
         const fuelNorm = car.fuelNorm || 0;
 
         let normIndicator = '';
@@ -167,6 +185,10 @@ const Cars = {
                     <div class="car-stat">
                         <span class="car-stat-value">${expenses.toLocaleString()}</span>
                         <span class="car-stat-label">Витрати (грн)</span>
+                    </div>
+                    <div class="car-stat">
+                        <span class="car-stat-value">${costPerKm > 0 ? costPerKm.toFixed(2) : '--'}</span>
+                        <span class="car-stat-label">Грн/км</span>
                     </div>
                 </div>
             </div>
