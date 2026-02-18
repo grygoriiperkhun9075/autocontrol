@@ -16,6 +16,8 @@ class OkkoScraper {
         this.lastFetchTime = 0;
         this.CACHE_TTL = 5 * 60 * 1000; // 5 хвилин
         this.issuedCoupons = new Map(); // date_string -> Set of coupon numbers
+        this.tokenTime = 0; // час отримання токену
+        this.TOKEN_TTL = 25 * 60 * 1000; // кеш токену 25 хвилин
     }
 
     /**
@@ -78,6 +80,12 @@ class OkkoScraper {
      */
     async authenticate() {
         try {
+            // Використовуємо кешований токен якщо він є і не прострочений
+            if (this.token && (Date.now() - this.tokenTime) < this.TOKEN_TTL) {
+                console.log('🔐 OKKO: Токен з кешу (вік: ' + Math.round((Date.now() - this.tokenTime) / 1000) + 'с)');
+                return true;
+            }
+
             console.log('🔐 OKKO: Авторизація...');
 
             const body = JSON.stringify({
@@ -116,6 +124,7 @@ class OkkoScraper {
                 }
 
                 if (this.token) {
+                    this.tokenTime = Date.now();
                     console.log(`✅ OKKO: Токен отримано (${this.token.substring(0, 20)}...)`);
                 } else {
                     console.log(`⚠️ OKKO: Login 200, але токен не знайдено`);
@@ -217,7 +226,7 @@ class OkkoScraper {
                 this.cachedCoupons = this._parseCoupons(data);
             } else if (resp.status === 401) {
                 console.log('🔄 OKKO: Re-auth...');
-                this.token = null;
+                this.token = null; this.tokenTime = 0;
                 await this.authenticate();
                 const retry = await this._request(
                     `${this.baseUrl}/proxy-service/cards?contract_id=${this.contractId}&offset=0&size=100&card_status=CHST0`
@@ -442,7 +451,7 @@ class OkkoScraper {
             // Re-auth якщо 401
             if (resp.status === 401) {
                 console.log('🔄 OKKO Order: Re-auth...');
-                this.token = null;
+                this.token = null; this.tokenTime = 0;
                 await this.authenticate();
                 resp = await makeRequest();
                 console.log(`🛒 OKKO Order retry: Status ${resp.status}`);
@@ -613,7 +622,7 @@ class OkkoScraper {
             if (resp.status !== 200) {
                 // Re-auth
                 if (resp.status === 401) {
-                    this.token = null;
+                    this.token = null; this.tokenTime = 0;
                     await this.authenticate();
                     const retry = await this._request(`${this.baseUrl}/proxy-service/contracts`);
                     if (retry.status !== 200) {
@@ -882,7 +891,7 @@ class OkkoScraper {
             } else if (resp.status === 401) {
                 // Re-auth і повторна спроба
                 console.log('🔄 OKKO PDF: Re-auth...');
-                this.token = null;
+                this.token = null; this.tokenTime = 0;
                 await this.authenticate();
                 const retry = await this._requestBinary(
                     `${this.baseUrl}/proxy-service/pdf/coupons`,
