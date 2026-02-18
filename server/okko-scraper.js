@@ -593,6 +593,179 @@ class OkkoScraper {
         }
     }
 
+    // ==================== МОНІТОРИНГ БАЛАНСУ КАРТКИ ====================
+
+    /**
+     * Отримання балансу для контракту карток
+     * @param {string} cardContractId - ID контракту карток (за замовч. 0010043190)
+     * @returns {Object|null} - {balance: number (UAH), contractName: string}
+     */
+    async getContractBalance(cardContractId = '0010043190') {
+        try {
+            if (!this.token) await this.authenticate();
+
+            console.log(`💳 OKKO: Перевірка балансу контракту ${cardContractId}...`);
+
+            const resp = await this._request(
+                `${this.baseUrl}/proxy-service/contracts`
+            );
+
+            if (resp.status !== 200) {
+                // Re-auth
+                if (resp.status === 401) {
+                    this.token = null;
+                    await this.authenticate();
+                    const retry = await this._request(`${this.baseUrl}/proxy-service/contracts`);
+                    if (retry.status !== 200) {
+                        console.error(`❌ OKKO Balance retry: ${retry.status}`);
+                        return null;
+                    }
+                    const contracts = retry.json();
+                    const contract = Array.isArray(contracts) ? contracts.find(c => c.contract_id === cardContractId) : null;
+                    if (contract) {
+                        const balanceUAH = (contract.balance || 0) / 100;
+                        console.log(`💳 OKKO Balance: ${balanceUAH} грн (${contract.contract_name || contract.name})`);
+                        return { balance: balanceUAH, contractName: contract.contract_name || contract.name || '' };
+                    }
+                    return null;
+                }
+                console.error(`❌ OKKO Balance: ${resp.status} ${resp.body.substring(0, 300)}`);
+                return null;
+            }
+
+            const contracts = resp.json();
+            console.log(`💳 OKKO Contracts: ${JSON.stringify(contracts).substring(0, 500)}`);
+
+            if (!Array.isArray(contracts)) {
+                console.error('❌ OKKO Balance: Contracts not an array');
+                return null;
+            }
+
+            const contract = contracts.find(c => c.contract_id === cardContractId);
+            if (!contract) {
+                console.error(`❌ OKKO Balance: Контракт ${cardContractId} не знайдено`);
+                return null;
+            }
+
+            const balanceUAH = (contract.balance || 0) / 100;
+            console.log(`💳 OKKO Balance: ${balanceUAH} грн (${contract.contract_name || contract.name})`);
+            return { balance: balanceUAH, contractName: contract.contract_name || contract.name || '' };
+        } catch (error) {
+            console.error('❌ OKKO Balance error:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Генерація PDF рахунку на поповнення контракту карток
+     * @param {string} cardContractId - ID контракту
+     * @param {number} amountUAH - сума поповнення в грн
+     * @returns {Buffer|null} - PDF рахунку
+     */
+    async generateContractTopUpInvoice(cardContractId = '0010043190', amountUAH = 20000) {
+        try {
+            if (!this.token) await this.authenticate();
+
+            console.log(`📄 OKKO: Генерую рахунок на ${amountUAH} грн для контракту ${cardContractId}...`);
+
+            // 1. Отримуємо реквізити
+            const reqResp = await this._request(
+                `${this.baseUrl}/proxy-service/payment_requisites?contract_id=${cardContractId}`
+            );
+
+            if (reqResp.status !== 200) {
+                console.error(`❌ OKKO Requisites: ${reqResp.status}`);
+                return null;
+            }
+
+            const req = reqResp.json();
+            console.log(`📄 OKKO Requisites: ${JSON.stringify(req).substring(0, 500)}`);
+
+            // 2. Формуємо PDF запит
+            const pdfBody = JSON.stringify({
+                client_name: req.client_company_name || req.client_name || '',
+                company_edrpou: req.company_edrpou || '',
+                company_name: req.company_name || '',
+                contract_id: cardContractId,
+                contract_name: req.contract_name || '24ПК-2658/25',
+                contract_sale_office: req.contract_sale_office || '3902',
+                iban: req.iban || '',
+                total_amount: amountUAH * 100 // в копійках
+            });
+
+            console.log(`📄 OKKO TopUp PDF request: ${pdfBody.substring(0, 500)}`);
+
+            const pdfResp = await this._requestBinary(
+                `${this.baseUrl}/userdata-service/pdf/invoice/contract`,
+                {
+                    method: 'POST',
+                    body: pdfBody,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(pdfBody).toString()
+                    }
+                }
+            );
+
+            console.log(`📄 OKKO TopUp PDF: Status ${pdfResp.status}, Size: ${pdfResp.buffer.length}`);
+
+            if (pdfResp.status === 200 && pdfResp.buffer.length > 100) {
+                const header = pdfResp.buffer.toString('utf8', 0, 5);
+                if (header === '%PDF-') {
+                    console.log(`✅ OKKO TopUp: PDF рахунку отримано (${pdfResp.buffer.length} bytes)`);
+                    return pdfResp.buffer;
+                }
+                console.log(`⚠️ OKKO TopUp: Not PDF. Header: ${header}`);
+                console.log(`⚠️ Body: ${pdfResp.buffer.toString('utf8', 0, 500)}`);
+            }
+
+            return null;
+        } catch (error) {
+            console.error('❌ OKKO TopUp Invoice error:', error.message);
+            return null;
+        }
+    }
+
+    /**
+     * Перевірка балансу контракту карток і автоматичне формування рахунку
+     * @param {number} minBalanceUAH - мінімальний баланс (за замовч. 5000)
+     * @param {number} topUpAmountUAH - сума поповнення (за замовч. 20000)
+     * @returns {Object|null} - {balance, needsTopUp, pdfBuffer}
+     */
+    async checkCardContractBalance(minBalanceUAH = 5000, topUpAmountUAH = 20000) {
+        try {
+            const cardContractId = '0010043190';
+            const balanceInfo = await this.getContractBalance(cardContractId);
+
+            if (!balanceInfo) {
+                console.log('⚠️ OKKO: Не вдалось перевірити баланс');
+                return null;
+            }
+
+            console.log(`💳 OKKO: Баланс ${balanceInfo.balance} грн (мін: ${minBalanceUAH} грн)`);
+
+            if (balanceInfo.balance >= minBalanceUAH) {
+                console.log(`✅ OKKO: Баланс в нормі (${balanceInfo.balance} >= ${minBalanceUAH})`);
+                return { balance: balanceInfo.balance, needsTopUp: false, contractName: balanceInfo.contractName };
+            }
+
+            console.log(`⚠️ OKKO: Баланс низький! ${balanceInfo.balance} < ${minBalanceUAH}. Формую рахунок...`);
+
+            const pdfBuffer = await this.generateContractTopUpInvoice(cardContractId, topUpAmountUAH);
+
+            return {
+                balance: balanceInfo.balance,
+                needsTopUp: true,
+                contractName: balanceInfo.contractName,
+                pdfBuffer,
+                topUpAmount: topUpAmountUAH
+            };
+        } catch (error) {
+            console.error('❌ OKKO Card balance check error:', error.message);
+            return null;
+        }
+    }
+
     /**
      * Чи налаштований скрейпер
      */

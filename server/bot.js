@@ -38,6 +38,22 @@ class AutoControlBot {
 
         this.setupHandlers();
         this.setupMenu();
+
+        // Періодична перевірка балансу контракту карток (кожні 4 години)
+        this._cardBalanceInterval = setInterval(() => {
+            if (this.okko && this.okko.isConfigured()) {
+                this.checkAndNotifyCardBalance();
+            }
+        }, 4 * 60 * 60 * 1000); // 4 години
+
+        // Перша перевірка через 30 секунд після запуску
+        setTimeout(() => {
+            if (this.okko && this.okko.isConfigured()) {
+                console.log('💳 Первинна перевірка балансу карток...');
+                this.checkAndNotifyCardBalance();
+            }
+        }, 30000);
+
         console.log('🤖 Telegram бот запущено!');
     }
 
@@ -573,6 +589,8 @@ AA 1234 BB
 
                 // Перевіряємо залишок талонів і повідомляємо адміна
                 this.checkAndNotifyLowStock();
+                // Перевіряємо баланс контракту карток
+                this.checkAndNotifyCardBalance();
 
                 if (messageId) {
                     this.bot.editMessageText(`✅ *Талон на ${coupon.nominal} л відправлено!*`, {
@@ -694,6 +712,66 @@ AA 1234 BB
             console.log(`📢 Обробка низького залишку завершена`);
         } catch (error) {
             console.error('❌ Low stock check error:', error.message);
+        }
+    }
+
+    /**
+     * Перевірка балансу контракту карток (24ПК-2658/25)
+     * Якщо баланс < 5000 грн — формує рахунок на 20000 грн
+     */
+    async checkAndNotifyCardBalance() {
+        if (!this.bot || !this.okko) return;
+
+        const adminId = process.env.ADMIN_CHAT_ID || '1324474106';
+        if (!adminId) return;
+
+        try {
+            // Дебаунс: не більше 1 перевірки на день
+            const todayKey = new Date().toISOString().split('T')[0];
+            if (!this._cardBalanceNotified) this._cardBalanceNotified = '';
+            if (this._cardBalanceNotified === todayKey) return;
+
+            const result = await this.okko.checkCardContractBalance(5000, 20000);
+            if (!result) return;
+
+            if (!result.needsTopUp) {
+                console.log(`💳 Баланс карток в нормі: ${result.balance} грн`);
+                return;
+            }
+
+            // Позначаємо що сьогодні вже повідомили
+            this._cardBalanceNotified = todayKey;
+
+            let text = `⚠️ *Низький баланс контракту карток!*\n\n`;
+            text += `💳 Контракт: *${result.contractName || '24ПК-2658/25'}*\n`;
+            text += `💰 Баланс: *${result.balance.toFixed(2)} грн*\n`;
+            text += `📉 Мінімум: 5 000 грн\n\n`;
+
+            if (result.pdfBuffer) {
+                text += `✅ Рахунок на *20 000 грн* сформовано!`;
+
+                await this.bot.sendMessage(adminId, text, { parse_mode: 'Markdown' });
+
+                await this.bot.sendDocument(adminId, result.pdfBuffer, {
+                    caption: `📄 *Рахунок на поповнення*\nКонтракт: ${result.contractName || '24ПК-2658/25'}\nСума: 20 000 грн\n\n_Оплатіть для поповнення балансу карток_`,
+                    parse_mode: 'Markdown'
+                }, {
+                    filename: `OKKO_topup_20000_${todayKey}.pdf`,
+                    contentType: 'application/pdf'
+                });
+
+                console.log(`📢 Рахунок на поповнення карток відправлено адміну`);
+            } else {
+                text += `❌ Не вдалось сформувати рахунок автоматично\n`;
+                text += `🔗 [Сформувати вручну на OKKO SSP](https://ssp-online.okko.ua)`;
+
+                await this.bot.sendMessage(adminId, text, {
+                    parse_mode: 'Markdown',
+                    disable_web_page_preview: true
+                });
+            }
+        } catch (error) {
+            console.error('❌ Card balance check error:', error.message);
         }
     }
 
