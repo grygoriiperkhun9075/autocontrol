@@ -91,7 +91,7 @@ const Cars = {
 
         if (recordsWithConsumption.length === 0) return 0;
 
-        const sum = recordsWithConsumption.reduce((acc, f) => acc + f.consumption, 0);
+        const sum = recordsWithConsumption.reduce((acc, f) => acc + parseFloat(f.consumption), 0);
         return (sum / recordsWithConsumption.length).toFixed(2);
     },
 
