@@ -38,7 +38,20 @@ const Fuel = {
             consumption: consumption
         };
 
-        return Storage.add(Storage.KEYS.FUEL, fuel);
+        const result = Storage.add(Storage.KEYS.FUEL, fuel);
+
+        // Оновлюємо пробіг авто в localStorage (щоб бот бачив актуальний пробіг)
+        const newMileage = parseInt(fuelData.mileage) || 0;
+        if (newMileage > 0) {
+            const cars = Storage.get(Storage.KEYS.CARS);
+            const car = cars.find(c => c.id === fuelData.carId);
+            if (car && newMileage > (parseInt(car.mileage) || 0)) {
+                car.mileage = newMileage;
+                Storage.set(Storage.KEYS.CARS, cars);
+            }
+        }
+
+        return result;
     },
 
     /**

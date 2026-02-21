@@ -517,7 +517,27 @@ class CompanyStorage {
         if (newData.documents) this.data.documents = newData.documents;
         // Дедуплікація після імпорту всіх даних
         this.deduplicateCars();
+        // Оновлюємо пробіг авто з записів заправок (веб не оновлює car.mileage)
+        this._syncCarMileageFromFuel();
         this.save();
+    }
+
+    /**
+     * Оновлює car.mileage з найсвіжішого запису заправки
+     * Вирішує проблему: веб-клієнт не оновлює car.mileage при додаванні заправки
+     */
+    _syncCarMileageFromFuel() {
+        for (const car of this.data.cars) {
+            const carFuel = this.data.fuel.filter(f => f.carId === car.id);
+            if (carFuel.length === 0) continue;
+
+            const maxMileage = Math.max(...carFuel.map(f => parseInt(f.mileage) || 0));
+            const currentMileage = parseInt(car.mileage) || 0;
+
+            if (maxMileage > currentMileage) {
+                car.mileage = maxMileage;
+            }
+        }
     }
 }
 
