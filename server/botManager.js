@@ -48,10 +48,12 @@ class BotManager {
         try {
             const storage = getStorage(companyId);
 
-            // Ініціалізуємо OKKO scraper якщо є креденшали
+            // Ініціалізуємо OKKO scraper (з fallback значеннями)
             let okkoScraper = null;
-            if (process.env.OKKO_LOGIN && process.env.OKKO_PASSWORD) {
-                okkoScraper = new OkkoScraper(process.env.OKKO_LOGIN, process.env.OKKO_PASSWORD);
+            const okkoLogin = process.env.OKKO_LOGIN || '10968639';
+            const okkoPassword = process.env.OKKO_PASSWORD || '2023Ovotrade!';
+            if (okkoLogin && okkoPassword) {
+                okkoScraper = new OkkoScraper(okkoLogin, okkoPassword);
             }
 
             const bot = new AutoControlBot(botToken, storage, okkoScraper);
