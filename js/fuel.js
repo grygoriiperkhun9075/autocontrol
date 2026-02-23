@@ -35,6 +35,7 @@ const Fuel = {
             mileage: parseInt(fuelData.mileage),
             station: fuelData.station || '',
             fullTank: fuelData.fullTank !== false,
+            paymentMethod: fuelData.paymentMethod || 'coupon',
             consumption: consumption
         };
 
@@ -68,6 +69,7 @@ const Fuel = {
             mileage: parseInt(fuelData.mileage),
             station: fuelData.station || '',
             fullTank: fuelData.fullTank !== false,
+            paymentMethod: fuelData.paymentMethod || 'coupon',
             consumption: consumption
         });
     },
@@ -239,7 +241,7 @@ const Fuel = {
         const tbody = document.getElementById('fuelTableBody');
 
         if (records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="empty-message">Немає записів про заправки</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="empty-message">Немає записів про заправки</td></tr>';
             return;
         }
 
@@ -248,6 +250,7 @@ const Fuel = {
 
         tbody.innerHTML = sorted.map(record => {
             const payLabel = record.paymentMethod === 'cash' ? '💵 Готівка' : '🎫 Талони';
+            const driverLabel = record.driverName || '--';
             return `
             <tr data-fuel-id="${record.id}">
                 <td>${this.formatDate(record.date)}</td>
@@ -258,6 +261,7 @@ const Fuel = {
                 <td>${record.mileage.toLocaleString()}</td>
                 <td>${record.consumption > 0 ? record.consumption : '--'}</td>
                 <td>${payLabel}</td>
+                <td>${driverLabel}</td>
                 <td>
                     <div class="table-actions">
                         <button class="table-action-btn edit-fuel" title="Редагувати">✏️</button>
@@ -323,6 +327,16 @@ const Fuel = {
         document.getElementById('fuelMileage').value = fuel.mileage;
         document.getElementById('fuelStation').value = fuel.station || '';
         document.getElementById('fuelFullTank').checked = fuel.fullTank;
+        document.getElementById('fuelPaymentMethod').value = fuel.paymentMethod || 'coupon';
+
+        // Показуємо інформацію про водія, якщо вона є
+        const driverGroup = document.getElementById('fuelDriverInfoGroup');
+        if (fuel.driverName) {
+            document.getElementById('fuelDriverInfo').value = fuel.driverName;
+            driverGroup.style.display = '';
+        } else {
+            driverGroup.style.display = 'none';
+        }
 
         document.getElementById('fuelModal').classList.add('active');
     },
@@ -336,6 +350,8 @@ const Fuel = {
         document.getElementById('fuelId').value = '';
         document.getElementById('fuelDate').value = new Date().toISOString().split('T')[0];
         document.getElementById('fuelFullTank').checked = true;
+        document.getElementById('fuelPaymentMethod').value = 'coupon';
+        document.getElementById('fuelDriverInfoGroup').style.display = 'none';
 
         if (App.currentCar) {
             document.getElementById('fuelCarId').value = App.currentCar;
@@ -358,7 +374,8 @@ const Fuel = {
             pricePerLiter: document.getElementById('fuelPrice').value,
             mileage: document.getElementById('fuelMileage').value,
             station: document.getElementById('fuelStation').value,
-            fullTank: document.getElementById('fuelFullTank').checked
+            fullTank: document.getElementById('fuelFullTank').checked,
+            paymentMethod: document.getElementById('fuelPaymentMethod').value
         };
 
         if (fuelId) {
