@@ -55,7 +55,10 @@ const Coupons = {
      */
     getBalance(period = 'all') {
         const purchased = this.getTotalPurchased(period);
-        const used = Fuel.getTotalLiters(null, period);
+        // Рахуємо тільки заправки по талонах
+        let fuelRecords = Fuel.getAll(null).filter(r => r.paymentMethod === 'coupon' || (!r.paymentMethod && r.paymentMethod !== 'cash'));
+        fuelRecords = Fuel.filterByPeriod(fuelRecords, period);
+        const used = fuelRecords.reduce((sum, r) => sum + r.liters, 0);
         return {
             purchased: purchased,
             used: used,
@@ -70,10 +73,11 @@ const Coupons = {
     getUsageByCarDetails(period = 'all') {
         const cars = Cars.getAll();
         return cars.map(car => {
-            const litersUsed = Fuel.getTotalLiters(car.id, period);
-            const fuelCost = Fuel.getTotalFuelCost(car.id, period);
-            const fuelRecords = Fuel.getAll(car.id);
+            // Тільки заправки по талонах
+            let fuelRecords = Fuel.getAll(car.id).filter(r => r.paymentMethod === 'coupon' || (!r.paymentMethod && r.paymentMethod !== 'cash'));
             const filtered = Fuel.filterByPeriod(fuelRecords, period);
+            const litersUsed = filtered.reduce((sum, r) => sum + r.liters, 0);
+            const fuelCost = filtered.reduce((sum, r) => sum + (r.liters * r.pricePerLiter), 0);
             return {
                 carId: car.id,
                 name: Cars.getDisplayName(car.id),
