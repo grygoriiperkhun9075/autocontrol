@@ -96,7 +96,7 @@ const Cars = {
     },
 
     /**
-     * Отримання загальних витрат на авто
+     * Отримання загальних витрат на авто (паливо + витрати + ТО)
      */
     getTotalExpenses(carId) {
         const fuelRecords = Storage.filter(Storage.KEYS.FUEL, f => f.carId === carId);
@@ -104,20 +104,25 @@ const Cars = {
 
         const fuelTotal = fuelRecords.reduce((acc, f) => acc + (f.liters * f.pricePerLiter), 0);
         const expensesTotal = expenses.reduce((acc, e) => acc + e.amount, 0);
+        const maintTotal = Maintenance.getTotalCost(carId);
 
-        return fuelTotal + expensesTotal;
+        return fuelTotal + expensesTotal + maintTotal;
     },
 
     /**
      * Вартість кілометра (всі витрати / пройдена відстань)
      */
     getCostPerKm(carId) {
-        const car = this.getById(carId);
-        if (!car) return 0;
+        const fuelRecords = Storage.filter(Storage.KEYS.FUEL, f => f.carId === carId);
+        if (fuelRecords.length < 2) return 0;
 
-        const initialMileage = parseInt(car.mileage) || 0;
-        const currentMileage = this.getCurrentMileage(carId);
-        const distanceDriven = currentMileage - initialMileage;
+        // Визначаємо відстань по записах заправок (min → max пробігу)
+        const mileages = fuelRecords.map(f => parseInt(f.mileage) || 0).filter(m => m > 0);
+        if (mileages.length < 2) return 0;
+
+        const minMileage = Math.min(...mileages);
+        const maxMileage = Math.max(...mileages);
+        const distanceDriven = maxMileage - minMileage;
 
         if (distanceDriven <= 0) return 0;
 
