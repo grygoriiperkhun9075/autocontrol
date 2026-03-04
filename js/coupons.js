@@ -104,6 +104,9 @@ const Coupons = {
         const coupons = this.getAll();
         const carDetails = this.getUsageByCarDetails(period);
 
+        // Ініціалізуємо toggle пріоритету (тільки раз)
+        this.initPriorityToggle();
+
         // Stat cards
         const balanceClass = balance.balance >= 0 ? 'positive' : 'negative';
         const balanceSign = balance.balance >= 0 ? '+' : '';
@@ -132,6 +135,72 @@ const Coupons = {
 
         // Таблиця використання по авто
         this.renderUsageTable(carDetails, balance.purchased);
+    },
+
+    /**
+     * Ініціалізація toggle пріоритету паливних карт
+     */
+    _priorityInited: false,
+    initPriorityToggle() {
+        if (this._priorityInited) return;
+        this._priorityInited = true;
+
+        const toggle = document.getElementById('fuelCardPriorityToggle');
+        const banner = document.getElementById('priorityBanner');
+        if (!toggle) return;
+
+        // Завантажуємо з сервера
+        this.loadPrioritySetting().then(enabled => {
+            toggle.checked = !!enabled;
+            this.updatePriorityUI(!!enabled);
+        });
+
+        toggle.addEventListener('change', () => {
+            const enabled = toggle.checked;
+            this.updatePriorityUI(enabled);
+            this.savePrioritySetting(enabled);
+        });
+    },
+
+    /**
+     * Оновлення UI при зміні пріоритету
+     */
+    updatePriorityUI(enabled) {
+        const banner = document.getElementById('priorityBanner');
+        if (banner) {
+            banner.style.display = enabled ? 'flex' : 'none';
+        }
+    },
+
+    /**
+     * Завантаження налаштування з сервера
+     */
+    async loadPrioritySetting() {
+        try {
+            const resp = await fetch('/api/settings');
+            if (!resp.ok) return false;
+            const settings = await resp.json();
+            return settings.fuelCardPriority || false;
+        } catch (e) {
+            console.warn('⚠️ Не вдалося завантажити settings:', e);
+            return false;
+        }
+    },
+
+    /**
+     * Збереження налаштування на сервер
+     */
+    async savePrioritySetting(enabled) {
+        try {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fuelCardPriority: enabled })
+            });
+            console.log(`✅ fuelCardPriority = ${enabled}`);
+        } catch (e) {
+            console.error('❌ Помилка збереження settings:', e);
+        }
     },
 
     /**

@@ -20,7 +20,8 @@ class CompanyStorage {
             coupons: [],
             maintenance: [],    // [{id, carId, type, date, mileage, cost, description, createdAt}]
             documents: [],      // [{id, carId, type, number, issueDate, expiryDate, note, createdAt}]
-            authorizedDrivers: [] // [{chatId, name, addedAt}]
+            authorizedDrivers: [], // [{chatId, name, addedAt}]
+            settings: {}          // {fuelCardPriority: bool, ...}
         };
         this.load();
     }
@@ -501,6 +502,19 @@ class CompanyStorage {
         return false;
     }
 
+    // ========== SETTINGS ==========
+
+    getSettings() {
+        return this.data.settings || {};
+    }
+
+    updateSettings(newSettings) {
+        if (!this.data.settings) this.data.settings = {};
+        Object.assign(this.data.settings, newSettings);
+        this.save();
+        return this.data.settings;
+    }
+
     // ========== DATA ==========
 
     getAllData() {
@@ -515,6 +529,7 @@ class CompanyStorage {
         if (newData.coupons) this.data.coupons = newData.coupons;
         if (newData.maintenance) this.data.maintenance = newData.maintenance;
         if (newData.documents) this.data.documents = newData.documents;
+        if (newData.settings) this.data.settings = newData.settings;
         // Дедуплікація після імпорту всіх даних
         this.deduplicateCars();
         // Оновлюємо пробіг авто з записів заправок (веб не оновлює car.mileage)

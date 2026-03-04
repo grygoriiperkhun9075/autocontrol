@@ -410,8 +410,9 @@ AA 1234 BB
             confirmText += `\n📊 Витрата: ${fuel.consumption} л/100км`;
         }
 
-        // Показуємо баланс талонів якщо оплата талонами
-        if (paymentMethod === 'coupon') {
+        // Показуємо баланс талонів якщо оплата талонами (і не ввімкнено пріоритет карт)
+        const settings = this.storage.getSettings ? this.storage.getSettings() : {};
+        if (paymentMethod === 'coupon' && !settings.fuelCardPriority) {
             const balance = this.getCouponBalance();
             confirmText += `\n\n🎫 Залишок талонів: *${balance.toFixed(1)} л*`;
         }
@@ -427,6 +428,10 @@ AA 1234 BB
      * Розрахунок балансу талонів (куплено - використано талонами)
      */
     getCouponBalance() {
+        // Якщо пріоритет паливних карт — не контролюємо баланс талонів
+        const settings = this.storage.getSettings ? this.storage.getSettings() : {};
+        if (settings.fuelCardPriority) return Infinity;
+
         const allCoupons = this.storage.getCoupons();
         const totalPurchased = allCoupons.reduce((sum, c) => sum + (parseFloat(c.liters) || 0), 0);
         const allFuel = this.storage.getFuel();
@@ -613,6 +618,10 @@ AA 1234 BB
      */
     async checkAndNotifyLowStock() {
         if (!this.bot || !this.okko) return;
+
+        // Якщо пріоритет паливних карт — не контролюємо залишок талонів
+        const settings = this.storage.getSettings ? this.storage.getSettings() : {};
+        if (settings.fuelCardPriority) return;
 
         const adminId = process.env.ADMIN_CHAT_ID || '1324474106';
         if (!adminId) return;

@@ -251,6 +251,25 @@
                     </button>
                 </div>
 
+                <div class="priority-toggle-container" id="priorityToggleContainer">
+                    <label class="priority-toggle">
+                        <input type="checkbox" id="fuelCardPriorityToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <div class="priority-toggle-info">
+                        <span class="priority-toggle-label">⛽ Пріоритет — паливні карти</span>
+                        <span class="priority-toggle-desc">
+                            Бот не контролює залишок талонів і не формує рахунки. Контролюються тільки кошти по
+                            договору.
+                        </span>
+                    </div>
+                </div>
+
+                <div id="priorityBanner" class="priority-banner" style="display:none;">
+                    <span class="priority-banner-icon">🔒</span>
+                    <span>Контроль талонів вимкнено. Бот моніторить тільки кошти по контракту.</span>
+                </div>
+
                 <div class="dashboard-grid coupons-balance-grid">
                     <div class="stat-card coupon-card">
                         <div class="stat-icon">🎫</div>

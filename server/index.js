@@ -425,6 +425,15 @@ app.get('/', (req, res) => {
 
 // ========== SETTINGS ==========
 
+app.get('/api/settings', (req, res) => {
+    res.json(req.storage.getSettings());
+});
+
+app.post('/api/settings', (req, res) => {
+    const updated = req.storage.updateSettings(req.body);
+    res.json({ success: true, settings: updated });
+});
+
 app.post('/api/settings/bot-token', (req, res) => {
     const { botToken } = req.body;
     if (!botToken) {
