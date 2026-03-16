@@ -129,7 +129,7 @@
       "brand": "BMW",
       "model": "X5",
       "year": "2021",
-      "mileage": 100000,
+      "mileage": 101000,
       "plate": "BC9409TM",
       "color": "Білий",
       "fuelNorm": 9.5,
@@ -151,7 +151,7 @@
       "brand": "BMW",
       "model": "X2",
       "year": "2018",
-      "mileage": 100000,
+      "mileage": 115800,
       "plate": "BC2415OC",
       "color": "Сірий",
       "fuelNorm": 9,
@@ -2108,6 +2108,32 @@
       "driverChatId": 6763496547,
       "driverName": "Роман Мрака",
       "createdAt": "2026-03-16T17:40:47.237Z"
+    },
+    {
+      "carId": "mloxbzhha60xyze1m6d",
+      "date": "2026-03-16",
+      "liters": 62.59,
+      "pricePerLiter": 80.99,
+      "mileage": 101000,
+      "station": "",
+      "fullTank": true,
+      "paymentMethod": "coupon",
+      "consumption": "6.26",
+      "id": "mmtjnt0bhpy2uginort",
+      "createdAt": "2026-03-16T18:56:03.995Z"
+    },
+    {
+      "carId": "mmem4ugo2osplisc8zy",
+      "date": "2026-03-16",
+      "liters": 53.8,
+      "pricePerLiter": 71.99,
+      "mileage": 115800,
+      "station": "",
+      "fullTank": true,
+      "paymentMethod": "coupon",
+      "consumption": "0.34",
+      "id": "mmtjpi8wn61096ss93",
+      "createdAt": "2026-03-16T18:57:23.360Z"
     }
   ],
   "expenses": [
