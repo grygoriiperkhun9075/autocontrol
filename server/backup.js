@@ -10,7 +10,8 @@ const path = require('path');
 const DATA_DIR = path.join(__dirname, 'data');
 const REPO_OWNER = 'grygoriiperkhun9075';
 const REPO_NAME = 'autocontrol';
-const BRANCH = 'main';
+const BACKUP_BRANCH = 'data-backup';
+const SOURCE_BRANCH = 'main'; // для першого restore якщо data-backup ще не існує
 
 class BackupManager {
     static lastBackup = null;
@@ -19,6 +20,7 @@ class BackupManager {
     static schedulerInterval = null;
     static isEnabled = false;
     static token = null;
+    static branchReady = false;
 
     /**
      * GitHub API запит
@@ -82,8 +84,34 @@ class BackupManager {
         }
 
         this.isEnabled = true;
-        console.log('✅ Автобекап увімкнено (GitHub API)');
+        console.log('✅ Автобекап увімкнено (GitHub API, гілка: ' + BACKUP_BRANCH + ')');
         return true;
+    }
+
+    /**
+     * Створення гілки data-backup якщо не існує
+     */
+    static async _ensureBranch() {
+        if (this.branchReady) return;
+        try {
+            // Перевіряємо чи гілка існує
+            await this._apiRequest('GET', `/repos/${REPO_OWNER}/${REPO_NAME}/branches/${BACKUP_BRANCH}`);
+            this.branchReady = true;
+            console.log(`📌 Гілка ${BACKUP_BRANCH} знайдена`);
+        } catch (e) {
+            // Гілка не існує — створюємо з main
+            try {
+                const mainRef = await this._apiRequest('GET', `/repos/${REPO_OWNER}/${REPO_NAME}/git/ref/heads/${SOURCE_BRANCH}`);
+                await this._apiRequest('POST', `/repos/${REPO_OWNER}/${REPO_NAME}/git/refs`, {
+                    ref: `refs/heads/${BACKUP_BRANCH}`,
+                    sha: mainRef.object.sha
+                });
+                this.branchReady = true;
+                console.log(`✅ Створено гілку ${BACKUP_BRANCH}`);
+            } catch (createErr) {
+                console.error(`❌ Не вдалося створити гілку ${BACKUP_BRANCH}:`, createErr.message);
+            }
+        }
     }
 
     /**
@@ -93,7 +121,7 @@ class BackupManager {
         try {
             const result = await this._apiRequest(
                 'GET',
-                `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}?ref=${BRANCH}`
+                `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}?ref=${BACKUP_BRANCH}`
             );
             return result.sha;
         } catch (e) {
@@ -127,7 +155,7 @@ class BackupManager {
         const body = {
             message,
             content: Buffer.from(content, 'utf-8').toString('base64'),
-            branch: BRANCH
+            branch: BACKUP_BRANCH
         };
         if (sha) {
             body.sha = sha; // оновлення існуючого файлу
@@ -150,15 +178,27 @@ class BackupManager {
         }
 
         this.init();
+        await this._ensureBranch();
 
         try {
             console.log('📦 Відновлення даних з GitHub...');
 
-            // Отримуємо список файлів в server/data/
-            const result = await this._apiRequest(
-                'GET',
-                `/repos/${REPO_OWNER}/${REPO_NAME}/contents/server/data?ref=${BRANCH}`
-            );
+            // Спочатку пробуємо data-backup, потім main
+            let result = null;
+            let branch = BACKUP_BRANCH;
+            try {
+                result = await this._apiRequest(
+                    'GET',
+                    `/repos/${REPO_OWNER}/${REPO_NAME}/contents/server/data?ref=${BACKUP_BRANCH}`
+                );
+            } catch (e) {
+                console.log(`📦 Дані не знайдені на ${BACKUP_BRANCH}, пробуємо ${SOURCE_BRANCH}...`);
+                branch = SOURCE_BRANCH;
+                result = await this._apiRequest(
+                    'GET',
+                    `/repos/${REPO_OWNER}/${REPO_NAME}/contents/server/data?ref=${SOURCE_BRANCH}`
+                );
+            }
 
             if (!Array.isArray(result)) {
                 console.log('📦 Папка server/data/ не знайдена в GitHub');
@@ -174,7 +214,18 @@ class BackupManager {
             for (const file of result) {
                 if (!file.name.endsWith('.json')) continue;
 
-                const content = await this._downloadFile(`server/data/${file.name}`);
+                // Завантажуємо з тієї ж гілки
+                let content = null;
+                try {
+                    const fileResult = await this._apiRequest(
+                        'GET',
+                        `/repos/${REPO_OWNER}/${REPO_NAME}/contents/server/data/${file.name}?ref=${branch}`
+                    );
+                    if (fileResult.content) {
+                        content = Buffer.from(fileResult.content, 'base64').toString('utf-8');
+                    }
+                } catch (e) { /* skip */ }
+
                 if (content) {
                     const localPath = path.join(DATA_DIR, file.name);
                     fs.writeFileSync(localPath, content, 'utf-8');
@@ -183,7 +234,7 @@ class BackupManager {
             }
 
             if (restoredCount > 0) {
-                console.log(`✅ Відновлено ${restoredCount} файлів з GitHub`);
+                console.log(`✅ Відновлено ${restoredCount} файлів з GitHub (${branch})`);
                 return true;
             } else {
                 console.log('📦 Немає файлів для відновлення');
@@ -205,6 +256,7 @@ class BackupManager {
         }
 
         try {
+            await this._ensureBranch();
             if (!fs.existsSync(DATA_DIR)) {
                 return { success: false, error: 'Папка data/ не існує' };
             }
