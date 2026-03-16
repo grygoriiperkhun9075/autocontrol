@@ -1,0 +1,13 @@
+{
+  "cars": [],
+  "fuel": [],
+  "expenses": [],
+  "reminders": [],
+  "coupons": [],
+  "maintenance": [],
+  "documents": [],
+  "authorizedDrivers": [],
+  "settings": {
+    "fuelCardPriority": true
+  }
+}

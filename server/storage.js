@@ -54,6 +54,14 @@ class CompanyStorage {
                 fs.mkdirSync(DATA_DIR, { recursive: true });
             }
             fs.writeFileSync(this.dataFile, JSON.stringify(this.data, null, 2), 'utf-8');
+
+            // Запланувати бекап після зміни даних (debounced, 5 хв)
+            try {
+                const BackupManager = require('./backup');
+                BackupManager.scheduleDebounced();
+            } catch (e) {
+                // Ігноруємо — бекап необов'язковий
+            }
         } catch (error) {
             console.error(`❌ [${this.companyId}] Помилка збереження:`, error);
         }

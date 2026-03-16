@@ -12,6 +12,7 @@ const fs = require('fs');
 const Auth = require('./auth');
 const { getStorage } = require('./storage');
 const BotManager = require('./botManager');
+const BackupManager = require('./backup');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,9 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Відновлення даних з Git бекапу (перед завантаженням)
+BackupManager.restore();
 
 // Ініціалізація
 Auth.init();
@@ -401,6 +405,17 @@ app.delete('/api/documents/:id', (req, res) => {
     res.json({ success: deleted });
 });
 
+// ========== BACKUP ==========
+
+app.post('/api/backup', (req, res) => {
+    const result = BackupManager.backup('manual');
+    res.json(result);
+});
+
+app.get('/api/backup/status', (req, res) => {
+    res.json(BackupManager.getStatus());
+});
+
 app.get('/api/sync', (req, res) => {
     res.json({
         success: true,
@@ -455,6 +470,9 @@ app.post('/api/settings/bot-token', (req, res) => {
 // Запуск ботів для всіх компаній
 BotManager.initAll();
 
+// Запуск планувальника бекапу
+BackupManager.startScheduler();
+
 // Запуск сервера
 app.listen(PORT, () => {
     console.log(`
@@ -478,6 +496,9 @@ function gracefulShutdown(signal) {
     for (const company of companies) {
         BotManager.stopBot(company.id);
     }
+    // Фінальний бекап перед зупинкою
+    BackupManager.backup('shutdown');
+    BackupManager.stop();
     console.log('✅ Всі боти зупинені. Завершення процесу.');
     process.exit(0);
 }

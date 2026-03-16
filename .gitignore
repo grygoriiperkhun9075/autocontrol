@@ -4,8 +4,12 @@ node_modules/
 # Environment
 .env
 
-# Runtime data
+# Runtime data (старий формат)
 server/data.json
+
+# Дані компаній — трекаємо для бекапу!
+!server/data/
+!server/data/*.json
 
 # OS files
 .DS_Store

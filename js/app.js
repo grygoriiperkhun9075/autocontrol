@@ -23,8 +23,10 @@ const App = {
         this.initPeriodSelector();
         this.initMobileMenu();
         this.initSyncButton();
+        this.initBackupButton();
         this.initLogout();
         this.loadCompanyInfo();
+        this.loadBackupStatus();
         Export.init();
 
         // Початковий рендеринг
@@ -96,6 +98,60 @@ const App = {
         } catch (e) { /* ignore */ }
     },
 
+    /**
+     * Ініціалізація кнопки бекапу
+     */
+    initBackupButton() {
+        var backupBtn = document.getElementById('backupBtn');
+        if (backupBtn) {
+            backupBtn.addEventListener('click', async () => {
+                backupBtn.disabled = true;
+                backupBtn.innerHTML = '<span class="nav-icon">⏳</span><span class="nav-text">Бекап...</span>';
+
+                try {
+                    const response = await fetch('/api/backup', { method: 'POST' });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        if (result.skipped) {
+                            alert('📦 Змін немає — бекап не потрібний');
+                        } else {
+                            alert('✅ Бекап виконано успішно!');
+                        }
+                    } else {
+                        alert('⚠️ ' + (result.error || 'Помилка бекапу'));
+                    }
+                } catch (e) {
+                    alert('❌ Помилка з\'єднання');
+                }
+
+                backupBtn.disabled = false;
+                backupBtn.innerHTML = '<span class="nav-icon">📦</span><span class="nav-text">Бекап <small id="backupStatus" style="opacity:0.6"></small></span>';
+                this.loadBackupStatus();
+            });
+        }
+    },
+
+    /**
+     * Завантаження статусу бекапу
+     */
+    async loadBackupStatus() {
+        try {
+            const response = await fetch('/api/backup/status');
+            if (response.ok) {
+                const status = await response.json();
+                var el = document.getElementById('backupStatus');
+                if (el) {
+                    if (!status.enabled) {
+                        el.textContent = '(вимкнено)';
+                    } else if (status.lastBackup) {
+                        const date = new Date(status.lastBackup.time);
+                        el.textContent = `(${date.toLocaleDateString('uk')})`;
+                    }
+                }
+            }
+        } catch (e) { /* ignore */ }
+    },
 
     /**
      * Ініціалізація навігації
