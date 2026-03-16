@@ -21,8 +21,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Відновлення даних з Git бекапу (перед завантаженням)
-BackupManager.restore();
+// Відновлення даних з GitHub бекапу (перед завантаженням)
+BackupManager.restore().then(() => {
+    console.log('📦 Restore завершено');
+}).catch(e => {
+    console.error('⚠️ Restore помилка:', e.message);
+});
 
 // Ініціалізація
 Auth.init();
@@ -407,8 +411,8 @@ app.delete('/api/documents/:id', (req, res) => {
 
 // ========== BACKUP ==========
 
-app.post('/api/backup', (req, res) => {
-    const result = BackupManager.backup('manual');
+app.post('/api/backup', async (req, res) => {
+    const result = await BackupManager.backup('manual');
     res.json(result);
 });
 
@@ -489,7 +493,7 @@ app.listen(PORT, () => {
 // ========== Graceful Shutdown ==========
 // Зупиняємо всі боти перед завершенням процесу
 // (важливо для Railway — при новому деплої старий процес отримує SIGTERM)
-function gracefulShutdown(signal) {
+async function gracefulShutdown(signal) {
     console.log(`\n🛑 Отримано ${signal}. Зупиняємо ботів...`);
     const Auth = require('./auth');
     const companies = Auth.getAllCompanies();
@@ -497,7 +501,11 @@ function gracefulShutdown(signal) {
         BotManager.stopBot(company.id);
     }
     // Фінальний бекап перед зупинкою
-    BackupManager.backup('shutdown');
+    try {
+        await BackupManager.backup('shutdown');
+    } catch (e) {
+        console.error('⚠️ Бекап при shutdown не вдався:', e.message);
+    }
     BackupManager.stop();
     console.log('✅ Всі боти зупинені. Завершення процесу.');
     process.exit(0);

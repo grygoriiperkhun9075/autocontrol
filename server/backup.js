@@ -1,14 +1,16 @@
 /**
- * BackupManager — Git-based автоматичний бекап даних
- * Комітить та пушить server/data/ в GitHub за розкладом
+ * BackupManager — GitHub API бекап даних
+ * Використовує GitHub REST API замість git CLI (Railway не має .git)
  */
 
-const { execSync } = require('child_process');
-const path = require('path');
+const https = require('https');
 const fs = require('fs');
+const path = require('path');
 
-const ROOT_DIR = path.join(__dirname, '..');
 const DATA_DIR = path.join(__dirname, 'data');
+const REPO_OWNER = 'grygoriiperkhun9075';
+const REPO_NAME = 'autocontrol';
+const BRANCH = 'main';
 
 class BackupManager {
     static lastBackup = null;
@@ -16,137 +18,193 @@ class BackupManager {
     static debounceTimer = null;
     static schedulerInterval = null;
     static isEnabled = false;
+    static token = null;
 
     /**
-     * Ініціалізація — перевіряє чи є GITHUB_TOKEN і налаштовує git
+     * GitHub API запит
+     */
+    static _apiRequest(method, apiPath, body = null) {
+        return new Promise((resolve, reject) => {
+            const options = {
+                hostname: 'api.github.com',
+                path: apiPath,
+                method,
+                headers: {
+                    'Authorization': `Bearer ${this.token}`,
+                    'Accept': 'application/vnd.github+json',
+                    'User-Agent': 'AutoControl-Backup',
+                    'X-GitHub-Api-Version': '2022-11-28'
+                }
+            };
+
+            if (body) {
+                options.headers['Content-Type'] = 'application/json';
+            }
+
+            const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    try {
+                        const parsed = data ? JSON.parse(data) : {};
+                        if (res.statusCode >= 200 && res.statusCode < 300) {
+                            resolve(parsed);
+                        } else {
+                            reject(new Error(`GitHub API ${res.statusCode}: ${parsed.message || data}`));
+                        }
+                    } catch (e) {
+                        reject(new Error(`Parse error: ${e.message}`));
+                    }
+                });
+            });
+
+            req.on('error', reject);
+            req.setTimeout(30000, () => {
+                req.destroy();
+                reject(new Error('Request timeout'));
+            });
+
+            if (body) {
+                req.write(JSON.stringify(body));
+            }
+            req.end();
+        });
+    }
+
+    /**
+     * Ініціалізація
      */
     static init() {
-        const token = process.env.GITHUB_TOKEN;
-        if (!token) {
+        this.token = process.env.GITHUB_TOKEN;
+        if (!this.token) {
             console.log('⚠️ GITHUB_TOKEN не встановлено — автобекап вимкнено');
-            console.log('   Додайте GITHUB_TOKEN в Railway Environment Variables');
             return false;
         }
 
+        this.isEnabled = true;
+        console.log('✅ Автобекап увімкнено (GitHub API)');
+        return true;
+    }
+
+    /**
+     * Отримання файлу з GitHub (для SHA)
+     */
+    static async _getFileSha(filePath) {
         try {
-            // Конфігуруємо git для використання токена
-            const remoteUrl = this._getRemoteUrl();
-            if (!remoteUrl) {
-                console.log('⚠️ Git remote не знайдено — автобекап вимкнено');
-                return false;
-            }
-
-            // Встановлюємо remote з токеном для авторизації
-            const authenticatedUrl = remoteUrl.replace(
-                'https://github.com/',
-                `https://${token}@github.com/`
+            const result = await this._apiRequest(
+                'GET',
+                `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}?ref=${BRANCH}`
             );
-
-            try {
-                execSync(`git remote set-url origin ${authenticatedUrl}`, {
-                    cwd: ROOT_DIR,
-                    stdio: 'pipe'
-                });
-            } catch (e) {
-                // Ігноруємо помилку якщо remote вже правильний
-            }
-
-            // Налаштовуємо git user для комітів
-            try {
-                execSync('git config user.email "autocontrol-backup@bot.local"', { cwd: ROOT_DIR, stdio: 'pipe' });
-                execSync('git config user.name "AutoControl Backup"', { cwd: ROOT_DIR, stdio: 'pipe' });
-            } catch (e) {
-                // Ігноруємо
-            }
-
-            this.isEnabled = true;
-            console.log('✅ Автобекап увімкнено (Git → GitHub)');
-            return true;
-        } catch (error) {
-            console.error('❌ Помилка ініціалізації бекапу:', error.message);
-            return false;
+            return result.sha;
+        } catch (e) {
+            return null; // файл не існує
         }
     }
 
     /**
-     * Отримання URL git remote
+     * Завантаження файлу з GitHub
      */
-    static _getRemoteUrl() {
+    static async _downloadFile(filePath) {
         try {
-            const url = execSync('git remote get-url origin', {
-                cwd: ROOT_DIR,
-                stdio: 'pipe'
-            }).toString().trim();
-            // Видаляємо існуючий токен з URL якщо він є
-            return url.replace(/https:\/\/[^@]+@github\.com\//, 'https://github.com/');
+            const result = await this._apiRequest(
+                'GET',
+                `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}?ref=${BRANCH}`
+            );
+            if (result.content) {
+                return Buffer.from(result.content, 'base64').toString('utf-8');
+            }
+            return null;
         } catch (e) {
             return null;
         }
     }
 
     /**
-     * Відновлення даних при старті (git pull)
+     * Завантаження файлу в GitHub
      */
-    static restore() {
+    static async _uploadFile(filePath, content, message) {
+        const sha = await this._getFileSha(filePath);
+        const body = {
+            message,
+            content: Buffer.from(content, 'utf-8').toString('base64'),
+            branch: BRANCH
+        };
+        if (sha) {
+            body.sha = sha; // оновлення існуючого файлу
+        }
+
+        return this._apiRequest(
+            'PUT',
+            `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`,
+            body
+        );
+    }
+
+    /**
+     * Відновлення даних при старті
+     */
+    static async restore() {
         if (!process.env.GITHUB_TOKEN) {
             console.log('📦 Бекап: GITHUB_TOKEN не встановлено, пропускаємо restore');
             return false;
         }
 
+        this.init();
+
         try {
-            // Спочатку init щоб налаштувати remote
-            this.init();
+            console.log('📦 Відновлення даних з GitHub...');
 
-            console.log('📦 Відновлення даних з Git...');
+            // Отримуємо список файлів в server/data/
+            const result = await this._apiRequest(
+                'GET',
+                `/repos/${REPO_OWNER}/${REPO_NAME}/contents/server/data?ref=${BRANCH}`
+            );
 
-            // Стягуємо зміни з remote
-            execSync('git fetch origin main', {
-                cwd: ROOT_DIR,
-                stdio: 'pipe',
-                timeout: 30000
-            });
+            if (!Array.isArray(result)) {
+                console.log('📦 Папка server/data/ не знайдена в GitHub');
+                return false;
+            }
 
-            // Перевіряємо чи є зміни в server/data/
-            try {
-                const diff = execSync('git diff origin/main -- server/data/', {
-                    cwd: ROOT_DIR,
-                    stdio: 'pipe'
-                }).toString();
+            // Створюємо локальну папку якщо не існує
+            if (!fs.existsSync(DATA_DIR)) {
+                fs.mkdirSync(DATA_DIR, { recursive: true });
+            }
 
-                if (diff) {
-                    // Є зміни — відновлюємо файли даних з remote
-                    execSync('git checkout origin/main -- server/data/', {
-                        cwd: ROOT_DIR,
-                        stdio: 'pipe'
-                    });
-                    console.log('✅ Дані відновлено з Git бекапу');
-                    return true;
-                } else {
-                    console.log('📦 Дані актуальні, відновлення не потрібне');
-                    return false;
+            let restoredCount = 0;
+            for (const file of result) {
+                if (!file.name.endsWith('.json')) continue;
+
+                const content = await this._downloadFile(`server/data/${file.name}`);
+                if (content) {
+                    const localPath = path.join(DATA_DIR, file.name);
+                    fs.writeFileSync(localPath, content, 'utf-8');
+                    restoredCount++;
                 }
-            } catch (e) {
-                // Якщо файлів немає в remote — нічого відновлювати
-                console.log('📦 Бекап в remote не знайдено');
+            }
+
+            if (restoredCount > 0) {
+                console.log(`✅ Відновлено ${restoredCount} файлів з GitHub`);
+                return true;
+            } else {
+                console.log('📦 Немає файлів для відновлення');
                 return false;
             }
         } catch (error) {
-            console.error('⚠️ Помилка відновлення з Git:', error.message);
+            console.error('⚠️ Помилка відновлення з GitHub:', error.message);
             this.lastError = { time: new Date().toISOString(), error: error.message, action: 'restore' };
             return false;
         }
     }
 
     /**
-     * Створення бекапу (git add + commit + push)
+     * Створення бекапу
      */
-    static backup(reason = 'auto') {
+    static async backup(reason = 'auto') {
         if (!this.isEnabled) {
             return { success: false, error: 'Автобекап вимкнено (GITHUB_TOKEN не встановлено)' };
         }
 
         try {
-            // Перевіряємо чи є data файли
             if (!fs.existsSync(DATA_DIR)) {
                 return { success: false, error: 'Папка data/ не існує' };
             }
@@ -156,49 +214,44 @@ class BackupManager {
                 return { success: false, error: 'Немає JSON файлів для бекапу' };
             }
 
-            // Додаємо файли
-            execSync('git add server/data/*.json', {
-                cwd: ROOT_DIR,
-                stdio: 'pipe'
-            });
+            const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0];
+            let uploadedCount = 0;
+            let skippedCount = 0;
 
-            // Перевіряємо чи є зміни
-            try {
-                execSync('git diff --cached --quiet -- server/data/', {
-                    cwd: ROOT_DIR,
-                    stdio: 'pipe'
-                });
-                // Якщо команда повернула 0 — змін немає
-                console.log('📦 Бекап: змін немає, пропускаємо');
-                return { success: true, skipped: true, message: 'Немає змін для бекапу' };
-            } catch (e) {
-                // exit code 1 = є зміни — продовжуємо
+            for (const fileName of dataFiles) {
+                const localPath = path.join(DATA_DIR, fileName);
+                const localContent = fs.readFileSync(localPath, 'utf-8');
+                const remotePath = `server/data/${fileName}`;
+
+                // Перевіряємо чи вміст відрізняється
+                const remoteContent = await this._downloadFile(remotePath);
+                if (remoteContent === localContent) {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Завантажуємо
+                await this._uploadFile(
+                    remotePath,
+                    localContent,
+                    `📦 Бекап [${reason}] ${fileName} — ${timestamp}`
+                );
+                uploadedCount++;
             }
 
-            // Комітимо
-            const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0];
-            const commitMsg = `📦 Бекап даних [${reason}] — ${timestamp}`;
-
-            execSync(`git commit -m "${commitMsg}" -- server/data/`, {
-                cwd: ROOT_DIR,
-                stdio: 'pipe'
-            });
-
-            // Пушимо
-            execSync('git push origin main', {
-                cwd: ROOT_DIR,
-                stdio: 'pipe',
-                timeout: 30000
-            });
+            if (uploadedCount === 0) {
+                console.log('📦 Бекап: змін немає, пропускаємо');
+                return { success: true, skipped: true, message: 'Немає змін для бекапу' };
+            }
 
             this.lastBackup = {
                 time: new Date().toISOString(),
                 reason,
-                files: dataFiles.length
+                files: uploadedCount
             };
             this.lastError = null;
 
-            console.log(`✅ Бекап виконано [${reason}]: ${dataFiles.length} файлів`);
+            console.log(`✅ Бекап виконано [${reason}]: ${uploadedCount} файлів оновлено, ${skippedCount} без змін`);
             return { success: true, ...this.lastBackup };
 
         } catch (error) {
@@ -234,8 +287,7 @@ class BackupManager {
     }
 
     /**
-     * Debounced бекап — викликається після зміни даних
-     * Чекає 5 хвилин після останньої зміни перед бекапом
+     * Debounced бекап
      */
     static scheduleDebounced() {
         if (!this.isEnabled) return;
