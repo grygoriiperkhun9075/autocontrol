@@ -2,17 +2,9 @@
   {
     "id": "c4dfed23-e1c5-4933-abce-43472a9189dd",
     "name": "AutoControl",
-    "login": "admin",
-    "passwordHash": "e45605b407cca371c6925b92e00f064d:b4da8fc5618fa7a865993e7254e2a78eb6e8eaa8b93ac251957be38465324b0362ca62d07b519f601c998737e755114f9737eaac951ac98a2eb2ecc54cf2a148",
+    "login": "grygorii.perkhun@gmail.com",
+    "passwordHash": "faf4ad767a001cb7804d82dc390c5c1d:4ff72c907c41ad944e4abd38883713f02c5f524fe4097390a85d554d53b297bfc9b4342a72138a4eb0e48a95e1c4a3f515c38653c8fd58ae6f764595a03fa5e5",
     "botToken": "8348491008:AAG8bYcGgn3ASCaw1U65ji6-GzjinDwbueI",
     "createdAt": "2026-03-04T10:03:44.260Z"
-  },
-  {
-    "id": "b1be1cc1-4bf6-4c20-a6d5-bd36bc91a73d",
-    "name": "Test Company",
-    "login": "testuser",
-    "passwordHash": "7723716677249762d9cfda582fa4754a:6e6ec648396d7fd554f5958416ca167cb21236e13c315bee0cef235b4544b4e4c8d81bbb3ed641d47432ea5280074e79ed7d25764d6ffd09a1755ec839fca61d",
-    "botToken": "8348491008:AAG8bYcGgn3ASCaw1U65ji6-GzjinDwbueI",
-    "createdAt": "2026-03-04T10:04:48.019Z"
   }
 ]
