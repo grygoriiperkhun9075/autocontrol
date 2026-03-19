@@ -2310,6 +2310,19 @@
       "driverChatId": 1804037833,
       "driverName": "Валентин Бабійчук",
       "createdAt": "2026-03-19T15:29:48.634Z"
+    },
+    {
+      "carId": "mlawcikc1pguw03bp8f",
+      "date": "2026-03-19",
+      "liters": 15.48,
+      "pricePerLiter": 81.99,
+      "mileage": 75119,
+      "station": "",
+      "fullTank": true,
+      "paymentMethod": "coupon",
+      "consumption": "2.26",
+      "id": "mmxtzp02t7z6jfr4ssd",
+      "createdAt": "2026-03-19T18:56:19.538Z"
     }
   ],
   "expenses": [
