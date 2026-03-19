@@ -2839,6 +2839,16 @@
       "note": "",
       "id": "mmszw8esj3idonsrjrq",
       "createdAt": "2026-03-16T09:42:44.884Z"
+    },
+    {
+      "id": "mmx4tlzw1211bbczjt4o",
+      "date": "2026-03-19",
+      "liters": 641,
+      "pricePerLiter": 77.99,
+      "supplier": "",
+      "note": "",
+      "source": "telegram",
+      "createdAt": "2026-03-19T07:11:45.308Z"
     }
   ],
   "authorizedDrivers": [
