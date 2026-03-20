@@ -1702,3 +1702,312 @@ form {
         display: none;
     }
 }
+
+/* ===== Inventory / Інвентаризація ===== */
+.inventory-filters {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    flex-wrap: wrap;
+}
+
+.inventory-date-range {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.inventory-date-range label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.inventory-date-range input[type="date"] {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.inventory-date-range input[type="date"]:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.inventory-date-range .date-range-sep {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.inventory-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.inventory-empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.inventory-empty p {
+    max-width: 400px;
+    line-height: 1.6;
+}
+
+/* Summary grid */
+.inventory-summary-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.stat-card.stat-danger {
+    border-color: var(--danger);
+}
+
+.stat-card.stat-danger .stat-value {
+    color: var(--danger);
+}
+
+/* Discrepancy blocks */
+.inventory-discrepancy-block {
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.inventory-discrepancy-block h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+}
+
+.inventory-discrepancy-block p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+}
+
+.inventory-discrepancy-block.success {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.inventory-discrepancy-block.success h3 {
+    color: var(--success);
+}
+
+.inventory-discrepancy-block.warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.inventory-discrepancy-block.warning h3 {
+    color: var(--warning);
+}
+
+.inventory-discrepancy-block.danger {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.inventory-discrepancy-block.danger h3 {
+    color: var(--danger);
+}
+
+.discrepancy-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.discrepancy-item:last-child {
+    border-bottom: none;
+}
+
+.discrepancy-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.discrepancy-text {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.discrepancy-diff {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--danger);
+    white-space: nowrap;
+}
+
+/* Table colors */
+.text-right {
+    text-align: right !important;
+}
+
+.text-positive {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.text-negative {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.adjustment-row td {
+    background: rgba(99, 102, 241, 0.08) !important;
+    font-style: italic;
+}
+
+.total-row td {
+    background: var(--bg-tertiary) !important;
+    border-top: 2px solid var(--border-color);
+}
+
+.empty-message {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Coupon table section titles */
+.coupon-table-section {
+    margin-bottom: 2rem;
+}
+
+.coupon-table-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+/* Adjust block */
+.inventory-adjust-block {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.inventory-adjust-block h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.adjust-description {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.adjust-description strong {
+    color: var(--text-primary);
+}
+
+.adjust-hint {
+    color: var(--warning);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--warning);
+}
+
+.adjust-hint strong {
+    color: var(--text-primary);
+}
+
+.adjust-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.adjust-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1rem;
+}
+
+.adjust-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.adjust-form .form-group label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.adjust-form .form-group small {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.adjust-form input[type="number"],
+.adjust-form input[type="text"] {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+}
+
+.adjust-form input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+#adjustSubmitBtn {
+    align-self: flex-start;
+}
+
+@media (max-width: 768px) {
+    .inventory-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .inventory-date-range {
+        flex-wrap: wrap;
+    }
+
+    .inventory-summary-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .adjust-form .form-row {
+        grid-template-columns: 1fr;
+    }
+}

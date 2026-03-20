@@ -66,6 +66,10 @@
                     <span class="nav-icon">📈</span>
                     <span class="nav-text">Статистика</span>
                 </button>
+                <button class="nav-item" data-section="inventory">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-text">Інвентаризація</span>
+                </button>
             </nav>
 
             <div class="sidebar-footer">
@@ -525,6 +529,30 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Inventory Section -->
+            <section class="content-section" id="section-inventory">
+                <div class="section-header">
+                    <h2>📦 Інвентаризація</h2>
+                </div>
+                <div class="inventory-filters">
+                    <div class="inventory-date-range">
+                        <label>Період:</label>
+                        <input type="date" id="invDateFrom" title="Від">
+                        <span class="date-range-sep">—</span>
+                        <input type="date" id="invDateTo" title="До">
+                    </div>
+                    <button class="btn btn-primary" id="invLoadBtn" onclick="Inventory.loadData()">
+                        🔄 Завантажити з ОККО
+                    </button>
+                </div>
+                <div id="inventoryContent">
+                    <div class="inventory-empty">
+                        <div class="inventory-empty-icon">📦</div>
+                        <p>Виберіть період та натисніть <strong>«Завантажити»</strong> для звірки даних з ОККО</p>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -939,6 +967,7 @@
     <script src="js/documents.js"></script>
     <script src="js/charts.js"></script>
     <script src="js/export.js"></script>
+    <script src="js/inventory.js"></script>
     <script src="js/app.js"></script>
 </body>
 

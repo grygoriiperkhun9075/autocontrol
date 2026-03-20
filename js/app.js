@@ -190,7 +190,8 @@ const App = {
             'drivers': 'Водії',
             'expenses': 'Витрати',
             'reminders': 'Нагадування',
-            'statistics': 'Статистика'
+            'statistics': 'Статистика',
+            'inventory': 'Інвентаризація'
         };
         document.getElementById('pageTitle').textContent = titles[section] || section;
 
@@ -243,6 +244,9 @@ const App = {
                 break;
             case 'statistics':
                 Charts.updateStatistics(carId, this.getStatsPeriod());
+                break;
+            case 'inventory':
+                Inventory.renderSection();
                 break;
         }
     },

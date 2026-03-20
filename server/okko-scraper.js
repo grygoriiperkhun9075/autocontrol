@@ -785,6 +785,99 @@ class OkkoScraper {
     }
 
     /**
+     * Отримання історії транзакцій з OKKO SSP
+     * Ендпоінт: GET /proxy-service/reports/transactions-history
+     * @param {string} dateFrom - дата початку (YYYY-MM-DD)
+     * @param {string} dateTo - дата кінця (YYYY-MM-DD)
+     * @returns {Array} масив транзакцій
+     */
+    async fetchTransactionHistory(dateFrom, dateTo) {
+        try {
+            if (!this.token) {
+                const auth = await this.authenticate();
+                if (!auth) {
+                    console.error('❌ OKKO Transactions: Не вдалося авторизуватися');
+                    return [];
+                }
+            }
+
+            console.log(`📋 OKKO Transactions: Завантаження за ${dateFrom} — ${dateTo}...`);
+
+            const allTransactions = [];
+            let index = 0;
+            const pageSize = 100;
+            let hasMore = true;
+
+            while (hasMore) {
+                const url = `${this.baseUrl}/proxy-service/reports/transactions-history?date-from=${dateFrom}&date-to=${dateTo}&index=${index}&size=${pageSize}&status=0`;
+
+                let resp = await this._request(url);
+
+                // Re-auth якщо 401
+                if (resp.status === 401) {
+                    console.log('🔄 OKKO Transactions: Re-auth...');
+                    this.token = null; this.tokenTime = 0;
+                    await this.authenticate();
+                    resp = await this._request(url);
+                }
+
+                if (resp.status !== 200) {
+                    console.error(`❌ OKKO Transactions: ${resp.status} ${resp.body.substring(0, 300)}`);
+                    break;
+                }
+
+                const data = resp.json();
+                if (!data) break;
+
+                // Парсимо відповідь — це може бути {content: [...], totalElements: N} або масив
+                let items = [];
+                if (Array.isArray(data)) {
+                    items = data;
+                } else if (data.content && Array.isArray(data.content)) {
+                    items = data.content;
+                } else if (data.transactions && Array.isArray(data.transactions)) {
+                    items = data.transactions;
+                } else if (data.items && Array.isArray(data.items)) {
+                    items = data.items;
+                }
+
+                // Нормалізуємо кожну транзакцію
+                for (const t of items) {
+                    allTransactions.push({
+                        date: t.transaction_date || t.transactionDate || t.date || '',
+                        type: t.transaction_type || t.transactionType || t.type || '',
+                        cardNumber: t.card_num || t.cardNum || t.card_number || '',
+                        productName: t.product_name || t.productName || '',
+                        volume: parseFloat(t.volume || t.liters || t.amount_volume || 0),
+                        price: parseFloat(t.price || t.unit_price || 0),
+                        sum: parseFloat(t.sum || t.total || t.amount || 0),
+                        station: t.station_name || t.stationName || t.station || '',
+                        status: t.status || '',
+                        contractId: t.contract_id || t.contractId || '',
+                        rawData: t
+                    });
+                }
+
+                console.log(`📋 OKKO Transactions: Стор. ${index / pageSize + 1} — ${items.length} записів`);
+
+                // Перевіряємо чи є ще сторінки
+                const totalElements = data.totalElements || data.total || 0;
+                if (items.length < pageSize || allTransactions.length >= totalElements) {
+                    hasMore = false;
+                } else {
+                    index += pageSize;
+                }
+            }
+
+            console.log(`✅ OKKO Transactions: Всього ${allTransactions.length} транзакцій`);
+            return allTransactions;
+        } catch (error) {
+            console.error('❌ OKKO Transactions error:', error.message);
+            return [];
+        }
+    }
+
+    /**
      * Чи налаштований скрейпер
      */
     isConfigured() {

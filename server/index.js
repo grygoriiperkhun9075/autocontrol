@@ -420,6 +420,169 @@ app.get('/api/backup/status', (req, res) => {
     res.json(BackupManager.getStatus());
 });
 
+// ========== INVENTORY (ІНВЕНТАРИЗАЦІЯ) ==========
+
+const OkkoScraper = require('./okko-scraper');
+
+/**
+ * GET /api/inventory?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
+ * Звірка внутрішніх даних з OKKO
+ */
+app.get('/api/inventory', async (req, res) => {
+    try {
+        const dateFrom = req.query.dateFrom || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const dateTo = req.query.dateTo || new Date().toISOString().split('T')[0];
+
+        // Внутрішні дані
+        const coupons = req.storage.getCoupons(); // купівлі талонів
+        const fuel = req.storage.getFuel();       // заправки
+        const couponFuel = fuel.filter(f => f.paymentMethod === 'coupon');
+
+        // Фільтруємо за період
+        const filterByDate = (arr, dateField = 'date') =>
+            arr.filter(item => {
+                const d = item[dateField] || '';
+                return d >= dateFrom && d <= dateTo;
+            });
+
+        const periodCoupons = filterByDate(coupons);
+        const periodFuel = filterByDate(couponFuel);
+
+        // Підсумки внутрішні
+        const totalPurchasedLiters = periodCoupons.reduce((sum, c) => sum + (parseFloat(c.liters) || 0), 0);
+        const totalPurchasedCost = periodCoupons.reduce((sum, c) => sum + ((parseFloat(c.liters) || 0) * (parseFloat(c.pricePerLiter) || 0)), 0);
+        const totalUsedLiters = periodFuel.reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0);
+        const totalUsedCost = periodFuel.reduce((sum, f) => sum + ((parseFloat(f.liters) || 0) * (parseFloat(f.pricePerLiter) || 0)), 0);
+
+        // Загальний баланс (за весь час, не тільки за період)
+        const allTimePurchased = coupons.reduce((sum, c) => sum + (parseFloat(c.liters) || 0), 0);
+        const allTimeCouponFuel = fuel.filter(f => f.paymentMethod === 'coupon');
+        const allTimeUsed = allTimeCouponFuel.reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0);
+        const calculatedBalance = allTimePurchased - allTimeUsed;
+
+        // OKKO дані
+        let okkoTransactions = [];
+        let okkoBalance = null;
+        let okkoError = null;
+
+        const okkoLogin = process.env.OKKO_LOGIN;
+        const okkoPassword = process.env.OKKO_PASSWORD;
+
+        if (okkoLogin && okkoPassword) {
+            try {
+                const scraper = new OkkoScraper(okkoLogin, okkoPassword);
+                okkoTransactions = await scraper.fetchTransactionHistory(dateFrom, dateTo);
+                okkoBalance = await scraper.getContractBalance();
+            } catch (e) {
+                okkoError = e.message;
+                console.error('❌ Inventory OKKO error:', e.message);
+            }
+        } else {
+            okkoError = 'OKKO credentials not configured';
+        }
+
+        // Підсумки OKKO
+        const okkoTotalVolume = okkoTransactions.reduce((sum, t) => sum + (t.volume || 0), 0);
+        const okkoTotalSum = okkoTransactions.reduce((sum, t) => sum + (t.sum || 0), 0);
+
+        // Розрахунок фактичного залишку за балансом рахунку
+        // Остання актуальна ціна дизпалива
+        const lastDieselPrice = periodCoupons.length > 0
+            ? parseFloat(periodCoupons.sort((a, b) => b.date.localeCompare(a.date))[0].pricePerLiter) || 0
+            : (periodFuel.length > 0
+                ? parseFloat(periodFuel.sort((a, b) => b.date.localeCompare(a.date))[0].pricePerLiter) || 0
+                : 0);
+
+        const balanceLiters = (okkoBalance && lastDieselPrice > 0)
+            ? Math.round(okkoBalance.balance / lastDieselPrice * 100) / 100
+            : null;
+
+        // Розбіжності
+        const discrepancies = [];
+
+        // 1. Розбіжність в літрах
+        const litersDiff = totalPurchasedLiters - okkoTotalVolume;
+        if (Math.abs(litersDiff) > 0.5) {
+            discrepancies.push({
+                type: 'volume',
+                description: `Різниця в літрах: наші ${totalPurchasedLiters.toFixed(1)}л vs ОККО ${okkoTotalVolume.toFixed(1)}л`,
+                difference: litersDiff,
+                severity: Math.abs(litersDiff) > 50 ? 'high' : 'medium'
+            });
+        }
+
+        // 2. Розбіжність в сумах
+        const costDiff = totalPurchasedCost - okkoTotalSum;
+        if (Math.abs(costDiff) > 10) {
+            discrepancies.push({
+                type: 'cost',
+                description: `Різниця в сумі: наші ${totalPurchasedCost.toFixed(2)} грн vs ОККО ${okkoTotalSum.toFixed(2)} грн`,
+                difference: costDiff,
+                severity: Math.abs(costDiff) > 1000 ? 'high' : 'medium'
+            });
+        }
+
+        res.json({
+            success: true,
+            period: { dateFrom, dateTo },
+            internal: {
+                purchases: periodCoupons,
+                refuels: periodFuel,
+                totalPurchasedLiters,
+                totalPurchasedCost,
+                totalUsedLiters,
+                totalUsedCost,
+                calculatedBalance
+            },
+            okko: {
+                transactions: okkoTransactions,
+                totalVolume: okkoTotalVolume,
+                totalSum: okkoTotalSum,
+                balance: okkoBalance,
+                error: okkoError
+            },
+            summary: {
+                lastDieselPrice,
+                balanceLiters,
+                discrepancies
+            }
+        });
+    } catch (error) {
+        console.error('❌ Inventory error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/inventory/adjust
+ * Коригування залишку літрів
+ * Body: { liters: number, note: string }
+ */
+app.post('/api/inventory/adjust', (req, res) => {
+    try {
+        const { liters, note } = req.body;
+
+        if (liters === undefined || liters === null) {
+            return res.status(400).json({ success: false, error: 'Вкажіть кількість літрів' });
+        }
+
+        // Зберігаємо коригування як спеціальний coupon запис
+        const adjustment = req.storage.addCoupon({
+            date: new Date().toISOString().split('T')[0],
+            liters: parseFloat(liters),
+            pricePerLiter: 0,
+            supplier: 'Коригування',
+            note: note || 'Інвентаризація — коригування залишку',
+            source: 'adjustment'
+        });
+
+        res.json({ success: true, adjustment });
+    } catch (error) {
+        console.error('❌ Inventory adjust error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 app.get('/api/sync', (req, res) => {
     res.json({
         success: true,
