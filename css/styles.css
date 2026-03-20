@@ -1785,6 +1785,22 @@ form {
     color: var(--danger);
 }
 
+.stat-card.stat-success {
+    border-color: var(--success);
+}
+
+.stat-card.stat-success .stat-value {
+    color: var(--success);
+}
+
+.stat-sublabel {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
+    opacity: 0.8;
+}
+
 /* Discrepancy blocks */
 .inventory-discrepancy-block {
     padding: 1.25rem 1.5rem;

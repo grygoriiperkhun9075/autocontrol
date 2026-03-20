@@ -101,19 +101,41 @@ const Inventory = {
     _renderSummaryCards(d) {
         const { internal, okko, summary } = d;
 
-        const okkoBalanceStr = okko.balance
+        // Баланс картки ОККО
+        const cardBalanceStr = okko.balance
             ? `${okko.balance.balance.toLocaleString()} грн`
             : (okko.error ? '⚠️ Немає зв\'язку' : '—');
 
-        const balanceLitersStr = summary.balanceLiters !== null
-            ? `≈ ${summary.balanceLiters} л`
+        // Талони ОККО
+        const couponsStr = okko.couponsCount !== undefined
+            ? `${okko.couponsTotalLiters || 0} л (${okko.couponsCount} шт)`
             : '—';
+
+        // Комбінований баланс ОККО (договір + талони)
+        const combinedLitersStr = summary.combinedBalanceLiters !== undefined
+            ? `${summary.combinedBalanceLiters.toFixed(1)} л`
+            : '—';
+
+        const combinedUAHStr = summary.combinedBalanceUAH !== undefined
+            ? `(${summary.combinedBalanceUAH.toLocaleString()} грн)`
+            : '';
+
+        // Розбивка: картка + талони
+        const breakdownStr = summary.cardBalanceLiters !== undefined
+            ? `картка ${summary.cardBalanceLiters.toFixed(1)}л + талони ${(summary.couponsTotalLiters || 0).toFixed(1)}л`
+            : '';
 
         const priceStr = summary.lastDieselPrice > 0
             ? `${summary.lastDieselPrice.toFixed(2)} грн/л`
             : '—';
 
         const balanceClass = internal.calculatedBalance < 0 ? 'stat-danger' : '';
+
+        // Порівняння наш залишок vs ОККО
+        const diffLiters = summary.combinedBalanceLiters !== undefined
+            ? (internal.calculatedBalance - summary.combinedBalanceLiters).toFixed(1)
+            : null;
+        const diffClass = diffLiters !== null ? (Math.abs(diffLiters) > 1 ? 'stat-danger' : 'stat-success') : '';
 
         return `
             <div class="dashboard-grid inventory-summary-grid">
@@ -135,21 +157,29 @@ const Inventory = {
                     <div class="stat-icon">📊</div>
                     <div class="stat-info">
                         <span class="stat-value">${internal.calculatedBalance.toFixed(1)}</span>
-                        <span class="stat-label">Розрахунковий залишок (л)</span>
+                        <span class="stat-label">Наш розрахунковий залишок (л)</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">💳</div>
                     <div class="stat-info">
-                        <span class="stat-value">${okkoBalanceStr}</span>
-                        <span class="stat-label">Баланс ОККО</span>
+                        <span class="stat-value">${cardBalanceStr}</span>
+                        <span class="stat-label">Баланс картки ОККО</span>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">⛽</div>
+                    <div class="stat-icon">🎫</div>
                     <div class="stat-info">
-                        <span class="stat-value">${balanceLitersStr}</span>
-                        <span class="stat-label">Залишок за балансом</span>
+                        <span class="stat-value">${couponsStr}</span>
+                        <span class="stat-label">Активні талони ОККО</span>
+                    </div>
+                </div>
+                <div class="stat-card ${diffClass}">
+                    <div class="stat-icon">🔄</div>
+                    <div class="stat-info">
+                        <span class="stat-value">${combinedLitersStr}</span>
+                        <span class="stat-label">Залишок ОККО (картка + талони)</span>
+                        <span class="stat-sublabel">${breakdownStr}</span>
                     </div>
                 </div>
                 <div class="stat-card">
@@ -159,6 +189,15 @@ const Inventory = {
                         <span class="stat-label">Остання ціна ДП</span>
                     </div>
                 </div>
+                ${diffLiters !== null ? `
+                <div class="stat-card ${diffClass}">
+                    <div class="stat-icon">${Math.abs(diffLiters) <= 1 ? '✅' : '⚠️'}</div>
+                    <div class="stat-info">
+                        <span class="stat-value">${diffLiters > 0 ? '+' : ''}${diffLiters} л</span>
+                        <span class="stat-label">Різниця (наші − ОККО)</span>
+                    </div>
+                </div>
+                ` : ''}
             </div>
         `;
     },

@@ -463,6 +463,7 @@ app.get('/api/inventory', async (req, res) => {
         // OKKO дані
         let okkoTransactions = [];
         let okkoBalance = null;
+        let okkoActiveCoupons = [];
         let okkoError = null;
 
         const okkoLogin = process.env.OKKO_LOGIN;
@@ -471,8 +472,19 @@ app.get('/api/inventory', async (req, res) => {
         if (okkoLogin && okkoPassword) {
             try {
                 const scraper = new OkkoScraper(okkoLogin, okkoPassword);
-                okkoTransactions = await scraper.fetchTransactionHistory(dateFrom, dateTo);
-                okkoBalance = await scraper.getContractBalance();
+
+                // Паралельно завантажуємо транзакції, баланс картки та активні талони
+                const [transactions, balance, coupons] = await Promise.all([
+                    scraper.fetchTransactionHistory(dateFrom, dateTo),
+                    scraper.getContractBalance(),
+                    scraper.fetchActiveCoupons(true) // forceRefresh для актуальних даних
+                ]);
+
+                okkoTransactions = transactions;
+                okkoBalance = balance;
+                okkoActiveCoupons = coupons;
+
+                console.log(`📊 Inventory: Транзакцій=${okkoTransactions.length}, Баланс=${okkoBalance?.balance || 0} грн, Талонів=${okkoActiveCoupons.length}`);
             } catch (e) {
                 okkoError = e.message;
                 console.error('❌ Inventory OKKO error:', e.message);
@@ -481,11 +493,14 @@ app.get('/api/inventory', async (req, res) => {
             okkoError = 'OKKO credentials not configured';
         }
 
-        // Підсумки OKKO
+        // Підсумки OKKO транзакцій
         const okkoTotalVolume = okkoTransactions.reduce((sum, t) => sum + (t.volume || 0), 0);
         const okkoTotalSum = okkoTransactions.reduce((sum, t) => sum + (t.sum || 0), 0);
 
-        // Розрахунок фактичного залишку за балансом рахунку
+        // Підсумки талонів ОККО
+        const couponsTotalLiters = okkoActiveCoupons.reduce((sum, c) => sum + (c.nominal || 0), 0);
+        const couponsCount = okkoActiveCoupons.length;
+
         // Остання актуальна ціна дизпалива
         const lastDieselPrice = periodCoupons.length > 0
             ? parseFloat(periodCoupons.sort((a, b) => b.date.localeCompare(a.date))[0].pricePerLiter) || 0
@@ -493,30 +508,53 @@ app.get('/api/inventory', async (req, res) => {
                 ? parseFloat(periodFuel.sort((a, b) => b.date.localeCompare(a.date))[0].pricePerLiter) || 0
                 : 0);
 
-        const balanceLiters = (okkoBalance && lastDieselPrice > 0)
+        // Вартість талонів у грн (за останньою ціною ДП)
+        const couponsTotalValue = couponsTotalLiters * lastDieselPrice;
+
+        // Баланс картки в літрах
+        const cardBalanceLiters = (okkoBalance && lastDieselPrice > 0)
             ? Math.round(okkoBalance.balance / lastDieselPrice * 100) / 100
-            : null;
+            : 0;
+
+        // Комбінований залишок ОККО = баланс картки (грн) + вартість талонів (грн)
+        const combinedBalanceUAH = (okkoBalance?.balance || 0) + couponsTotalValue;
+
+        // Комбінований залишок ОККО в літрах = баланс картки (л) + талони (л)
+        const combinedBalanceLiters = cardBalanceLiters + couponsTotalLiters;
+
+        console.log(`📊 Inventory: Картка=${okkoBalance?.balance || 0} грн (${cardBalanceLiters}л), Талони=${couponsTotalLiters}л (${couponsTotalValue.toFixed(2)} грн), Разом=${combinedBalanceLiters}л (${combinedBalanceUAH.toFixed(2)} грн)`);
 
         // Розбіжності
         const discrepancies = [];
 
-        // 1. Розбіжність в літрах
+        // 1. Порівняння нашого залишку з ОККО (залишок картки + талони)
+        const balanceDiffLiters = calculatedBalance - combinedBalanceLiters;
+        if (Math.abs(balanceDiffLiters) > 1) {
+            discrepancies.push({
+                type: 'balance',
+                description: `Залишок: наші ${calculatedBalance.toFixed(1)}л vs ОККО ${combinedBalanceLiters.toFixed(1)}л (картка ${cardBalanceLiters.toFixed(1)}л + талони ${couponsTotalLiters.toFixed(1)}л)`,
+                difference: balanceDiffLiters,
+                severity: Math.abs(balanceDiffLiters) > 50 ? 'high' : 'medium'
+            });
+        }
+
+        // 2. Розбіжність в літрах за період
         const litersDiff = totalPurchasedLiters - okkoTotalVolume;
         if (Math.abs(litersDiff) > 0.5) {
             discrepancies.push({
                 type: 'volume',
-                description: `Різниця в літрах: наші ${totalPurchasedLiters.toFixed(1)}л vs ОККО ${okkoTotalVolume.toFixed(1)}л`,
+                description: `Різниця в літрах за період: наші ${totalPurchasedLiters.toFixed(1)}л vs ОККО ${okkoTotalVolume.toFixed(1)}л`,
                 difference: litersDiff,
                 severity: Math.abs(litersDiff) > 50 ? 'high' : 'medium'
             });
         }
 
-        // 2. Розбіжність в сумах
+        // 3. Розбіжність в сумах за період
         const costDiff = totalPurchasedCost - okkoTotalSum;
         if (Math.abs(costDiff) > 10) {
             discrepancies.push({
                 type: 'cost',
-                description: `Різниця в сумі: наші ${totalPurchasedCost.toFixed(2)} грн vs ОККО ${okkoTotalSum.toFixed(2)} грн`,
+                description: `Різниця в сумі за період: наші ${totalPurchasedCost.toFixed(2)} грн vs ОККО ${okkoTotalSum.toFixed(2)} грн`,
                 difference: costDiff,
                 severity: Math.abs(costDiff) > 1000 ? 'high' : 'medium'
             });
@@ -539,11 +577,19 @@ app.get('/api/inventory', async (req, res) => {
                 totalVolume: okkoTotalVolume,
                 totalSum: okkoTotalSum,
                 balance: okkoBalance,
+                activeCoupons: okkoActiveCoupons,
+                couponsCount,
+                couponsTotalLiters,
+                couponsTotalValue,
+                combinedBalanceUAH,
                 error: okkoError
             },
             summary: {
                 lastDieselPrice,
-                balanceLiters,
+                cardBalanceLiters,
+                couponsTotalLiters,
+                combinedBalanceLiters,
+                combinedBalanceUAH,
                 discrepancies
             }
         });
