@@ -473,11 +473,20 @@ const Inventory = {
             const result = await response.json();
 
             if (result.success) {
-                alert(`✅ Коригування збережено: ${liters > 0 ? '+' : ''}${liters} л`);
-                // Перезавантажуємо дані
-                this.data = null;
+                // Синхронізуємо дані з сервером
                 await Storage.syncFromServer();
+
+                // Оновлюємо баланс в розділі Талони
+                const newBalance = Coupons.getBalance('all');
+
+                alert(`✅ Коригування збережено: ${liters > 0 ? '+' : ''}${liters} л\n\nНовий залишок (Талони): ${newBalance.balance.toFixed(1)} л\n(Куплено: ${newBalance.purchased.toFixed(1)} л, Використано: ${newBalance.used.toFixed(1)} л)`);
+
+                // Перезавантажуємо дані інвентаризації
+                this.data = null;
                 await this.loadData();
+
+                // Примусово оновлюємо секцію Талони (якщо вона є в DOM)
+                try { Coupons.renderSection(App.currentPeriod); } catch (e) { }
             } else {
                 alert('❌ Помилка: ' + (result.error || 'Невідома помилка'));
             }
