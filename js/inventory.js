@@ -89,6 +89,7 @@ const Inventory = {
         container.innerHTML = `
             ${this._renderSummaryCards(d)}
             ${this._renderDiscrepancies(d)}
+            ${this._renderCrossReference(d)}
             ${this._renderComparisonTable(d)}
             ${this._renderOkkoTransactions(d)}
             ${this._renderAdjustBlock(d)}
@@ -481,6 +482,140 @@ const Inventory = {
                 btn.innerHTML = '✅ Застосувати коригування';
             }
         }
+    },
+
+    /**
+     * Перехресна перевірка: які заправки з ОККО не введені в бот
+     */
+    _renderCrossReference(d) {
+        const cr = d.crossReference;
+        if (!cr) return '';
+
+        const unmatchedCount = cr.unmatchedOkko?.length || 0;
+        const unmatchedLiters = cr.totalUnmatchedOkkoLiters || 0;
+        const unmatchedInternalCount = cr.unmatchedInternal?.length || 0;
+        const matchedCount = cr.matched?.length || 0;
+
+        // Якщо все збігається
+        if (unmatchedCount === 0 && unmatchedInternalCount === 0) {
+            return `
+                <div class="inventory-discrepancy-block success">
+                    <h3>✅ Всі заправки ОККО введені в бот</h3>
+                    <p>Знайдено ${matchedCount} збігів між ОККО та ботом.</p>
+                </div>
+            `;
+        }
+
+        // --- Підсумок по водіях ---
+        let driverSummaryHtml = '';
+        const dm = cr.driversMissing || {};
+        const driverEntries = Object.entries(dm).sort((a, b) => b[1].totalLiters - a[1].totalLiters);
+        if (driverEntries.length > 0) {
+            const driverRows = driverEntries.map(([name, info]) => `
+                <tr>
+                    <td><strong>${name}</strong></td>
+                    <td class="text-danger">${info.count}</td>
+                    <td class="text-danger">${info.totalLiters.toFixed(1)} л</td>
+                </tr>
+            `).join('');
+
+            driverSummaryHtml = `
+                <div class="cross-ref-drivers">
+                    <h4>👤 Хто не ввів заправки:</h4>
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>Водій (ОККО)</th><th>Кількість</th><th>Літрів</th></tr>
+                        </thead>
+                        <tbody>${driverRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // --- Таблиця не введених в бот (з ОККО) ---
+        let unmatchedOkkoHtml = '';
+        if (unmatchedCount > 0) {
+            const rows = cr.unmatchedOkko.map(u => `
+                <tr class="row-danger">
+                    <td>${this._formatDate(u.date)}</td>
+                    <td>${u.driverName}</td>
+                    <td>${u.cardNumber || '—'}</td>
+                    <td>${u.station}</td>
+                    <td><strong>${u.volume.toFixed(1)} л</strong></td>
+                    <td>${u.sum ? u.sum.toFixed(2) + ' грн' : '—'}</td>
+                </tr>
+            `).join('');
+
+            unmatchedOkkoHtml = `
+                <div class="cross-ref-table">
+                    <h4>❌ Не введені в бот (${unmatchedCount} заправок, ${unmatchedLiters.toFixed(1)} л):</h4>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Водій (ОККО)</th>
+                                    <th>Картка</th>
+                                    <th>АЗК</th>
+                                    <th>Літрів</th>
+                                    <th>Сума</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Таблиця зайвих в боті (немає в ОККО) ---
+        let unmatchedInternalHtml = '';
+        if (unmatchedInternalCount > 0) {
+            const internalLiters = cr.totalUnmatchedInternalLiters || 0;
+            const rows = cr.unmatchedInternal.map(u => `
+                <tr class="row-warning">
+                    <td>${this._formatDate(u.date)}</td>
+                    <td>${u.driverName}</td>
+                    <td>${u.carPlate || '—'}</td>
+                    <td>${u.liters.toFixed(1)} л</td>
+                    <td>${u.paymentMethod || '—'}</td>
+                </tr>
+            `).join('');
+
+            unmatchedInternalHtml = `
+                <div class="cross-ref-table">
+                    <h4>⚠️ Є в боті, але немає в ОККО (${unmatchedInternalCount} записів, ${internalLiters.toFixed(1)} л):</h4>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Водій</th>
+                                    <th>Авто</th>
+                                    <th>Літрів</th>
+                                    <th>Оплата</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="inventory-cross-reference">
+                <h3>🔍 Перехресна перевірка заправок</h3>
+                <p class="cross-ref-summary">
+                    Збігів: <strong>${matchedCount}</strong> |
+                    Не введено в бот: <strong class="text-danger">${unmatchedCount}</strong> (${unmatchedLiters.toFixed(1)} л) |
+                    Зайвих в боті: <strong>${unmatchedInternalCount}</strong>
+                </p>
+                ${driverSummaryHtml}
+                ${unmatchedOkkoHtml}
+                ${unmatchedInternalHtml}
+            </div>
+        `;
     },
 
     /**

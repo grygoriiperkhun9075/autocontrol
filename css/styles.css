@@ -1921,6 +1921,52 @@ form {
     color: var(--text-primary);
 }
 
+/* Cross-reference section */
+.inventory-cross-reference {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.inventory-cross-reference h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+}
+
+.cross-ref-summary {
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+.cross-ref-drivers {
+    margin-bottom: 1.25rem;
+}
+
+.cross-ref-drivers h4,
+.cross-ref-table h4 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.cross-ref-table {
+    margin-bottom: 1.25rem;
+}
+
+.text-danger {
+    color: var(--danger) !important;
+}
+
+.row-danger td {
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.row-warning td {
+    background: rgba(234, 179, 8, 0.08);
+}
+
 /* Adjust block */
 .inventory-adjust-block {
     background: var(--bg-card);

@@ -560,6 +560,118 @@ app.get('/api/inventory', async (req, res) => {
             });
         }
 
+        // ============================================================
+        // Перехресна перевірка: OKKO заправки vs записи в боті
+        // ============================================================
+        const allFuel = req.storage.getFuel(); // всі заправки з бота (всі методи оплати)
+        const allPeriodFuel = filterByDate(allFuel); // за період
+        const cars = req.storage.getCars();
+
+        // OKKO: тільки заправки (volume > 0)
+        const okkoRefuels = okkoTransactions.filter(t => (t.volume || 0) > 0);
+
+        // Копіюємо масиви для "шахматки" — щоб відмічати використані
+        const usedInternal = new Set();
+        const matched = [];
+        const unmatchedOkko = [];
+
+        for (const okkoTx of okkoRefuels) {
+            const okkoDate = (okkoTx.date || '').substring(0, 10); // YYYY-MM-DD
+            const okkoVolume = okkoTx.volume || 0;
+
+            // Шукаємо відповідний запис в боті: та ж дата ± тої ж кількість літрів (±2)
+            let bestMatch = null;
+            let bestDiff = Infinity;
+
+            for (let i = 0; i < allPeriodFuel.length; i++) {
+                if (usedInternal.has(i)) continue;
+
+                const internalDate = (allPeriodFuel[i].date || '').substring(0, 10);
+                const internalVolume = parseFloat(allPeriodFuel[i].liters) || 0;
+
+                if (internalDate === okkoDate && Math.abs(internalVolume - okkoVolume) <= 2) {
+                    const diff = Math.abs(internalVolume - okkoVolume);
+                    if (diff < bestDiff) {
+                        bestDiff = diff;
+                        bestMatch = i;
+                    }
+                }
+            }
+
+            if (bestMatch !== null) {
+                usedInternal.add(bestMatch);
+                const internalRec = allPeriodFuel[bestMatch];
+                const car = cars.find(c => c.id === internalRec.carId);
+                matched.push({
+                    okko: {
+                        date: okkoDate,
+                        volume: okkoVolume,
+                        driverName: okkoTx.driverName || '',
+                        station: okkoTx.station || '',
+                        cardNumber: okkoTx.cardNumber || '',
+                        sum: okkoTx.sum || 0
+                    },
+                    internal: {
+                        date: internalRec.date,
+                        liters: parseFloat(internalRec.liters) || 0,
+                        driverName: internalRec.driverName || '',
+                        carPlate: car ? (car.plate || car.number || '') : '',
+                        carId: internalRec.carId
+                    },
+                    volumeDiff: Math.round((okkoVolume - (parseFloat(internalRec.liters) || 0)) * 10) / 10
+                });
+            } else {
+                unmatchedOkko.push({
+                    date: okkoDate,
+                    volume: okkoVolume,
+                    driverName: okkoTx.driverName || '—',
+                    station: okkoTx.station || '—',
+                    cardNumber: okkoTx.cardNumber || '',
+                    sum: okkoTx.sum || 0,
+                    productName: okkoTx.productName || ''
+                });
+            }
+        }
+
+        // Записи в боті, яких немає в ОККО
+        const unmatchedInternal = [];
+        for (let i = 0; i < allPeriodFuel.length; i++) {
+            if (!usedInternal.has(i)) {
+                const rec = allPeriodFuel[i];
+                const car = cars.find(c => c.id === rec.carId);
+                unmatchedInternal.push({
+                    date: rec.date,
+                    liters: parseFloat(rec.liters) || 0,
+                    driverName: rec.driverName || '—',
+                    carPlate: car ? (car.plate || car.number || '') : '',
+                    carId: rec.carId,
+                    paymentMethod: rec.paymentMethod || ''
+                });
+            }
+        }
+
+        // Агреговані — хто не внес заправки
+        const driversMissing = {};
+        for (const u of unmatchedOkko) {
+            const name = u.driverName || '—';
+            if (!driversMissing[name]) {
+                driversMissing[name] = { count: 0, totalLiters: 0 };
+            }
+            driversMissing[name].count++;
+            driversMissing[name].totalLiters += u.volume;
+        }
+
+        const crossReference = {
+            matched: matched,
+            unmatchedOkko: unmatchedOkko,       // Є в ОККО, немає в боті
+            unmatchedInternal: unmatchedInternal, // Є в боті, немає в ОККО
+            driversMissing: driversMissing,       // Агрегація по водіях
+            totalUnmatchedOkkoLiters: unmatchedOkko.reduce((s, u) => s + u.volume, 0),
+            totalUnmatchedInternalLiters: unmatchedInternal.reduce((s, u) => s + u.liters, 0)
+        };
+
+        console.log(`📊 Inventory Cross-Reference: matched=${matched.length}, unmatchedOkko=${unmatchedOkko.length} (${crossReference.totalUnmatchedOkkoLiters.toFixed(1)}л), unmatchedInternal=${unmatchedInternal.length}`);
+
         res.json({
             success: true,
             period: { dateFrom, dateTo },
@@ -584,6 +696,7 @@ app.get('/api/inventory', async (req, res) => {
                 combinedBalanceUAH,
                 error: okkoError
             },
+            crossReference,
             summary: {
                 lastDieselPrice,
                 cardBalanceLiters,
