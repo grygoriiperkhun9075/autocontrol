@@ -878,19 +878,42 @@ class OkkoScraper {
                 }
 
                 // Нормалізуємо кожну транзакцію
-                // Поля з OKKO B2B скріншоту: Дата, Операція, Номер картки, ПІБ, АЗК, Тип пального, Літраж, Знижка, Ціна, Сума
+                // Реальні поля OKKO B2B API: trans_date, trans_type_desc, card_num, 
+                // person_first_name + person_last_name, azs_name, product_desc, 
+                // volume (в мл!), price (в коп!), amnt_acct (в коп!)
                 for (const t of items) {
+                    // Об'єм в API в мілілітрах — ділимо на 1000
+                    const rawVolume = parseFloat(t.volume || t.liters || t.amount_volume || 0);
+                    const volume = rawVolume > 999 ? rawVolume / 1000 : rawVolume;
+
+                    // Ціна і сума в API в копійках — ділимо на 100
+                    const rawPrice = parseFloat(t.price || t.unit_price || 0);
+                    const price = rawPrice > 999 ? rawPrice / 100 : rawPrice;
+
+                    const rawSum = parseFloat(t.amnt_acct || t.sum || t.total || t.amount || 0);
+                    const sum = rawSum > 999 ? rawSum / 100 : rawSum;
+
+                    const rawDiscount = parseFloat(t.discount || t.price_discount || 0);
+                    const discount = rawDiscount > 999 ? rawDiscount / 100 : rawDiscount;
+
+                    // ПІБ водія — комбінуємо first + last name
+                    const firstName = t.person_first_name || '';
+                    const lastName = t.person_last_name || '';
+                    const driverName = t.person_name || t.personName ||
+                        (lastName && firstName ? `${lastName} ${firstName}` : lastName || firstName) ||
+                        t.holder_name || '';
+
                     allTransactions.push({
-                        date: t.transaction_date || t.transactionDate || t.date || t.created_at || '',
-                        type: t.transaction_type || t.transactionType || t.type || t.operation || t.operation_type || '',
-                        cardNumber: t.card_num || t.cardNum || t.card_number || t.cardNumber || '',
-                        driverName: t.person_name || t.personName || t.driver_name || t.driverName || t.name || t.holder_name || t.holderName || '',
-                        productName: t.product_name || t.productName || t.fuel_type || t.fuelType || '',
-                        volume: parseFloat(t.volume || t.liters || t.amount_volume || t.fuel_volume || t.quantity || 0),
-                        discount: parseFloat(t.discount || t.price_discount || t.priceDiscount || 0),
-                        price: parseFloat(t.price || t.unit_price || t.price_with_discount || t.priceWithDiscount || 0),
-                        sum: parseFloat(t.sum || t.total || t.amount || t.total_sum || t.totalSum || 0),
-                        station: t.station_name || t.stationName || t.station || t.azk || t.azk_name || t.azkName || '',
+                        date: t.trans_date || t.transaction_date || t.transactionDate || t.date || '',
+                        type: t.trans_type_desc || t.transaction_type || t.transactionType || t.type || t.operation || '',
+                        cardNumber: t.card_num || t.cardNum || t.card_number || '',
+                        driverName: driverName,
+                        productName: t.product_desc || t.product_name || t.productName || t.fuel_type || '',
+                        volume: volume,
+                        discount: discount,
+                        price: price,
+                        sum: sum,
+                        station: t.azs_name || t.station_name || t.stationName || t.station || '',
                         status: t.status || '',
                         contractId: t.contract_id || t.contractId || '',
                         rawData: t
