@@ -397,24 +397,31 @@ const Inventory = {
     _renderAdjustBlock(d) {
         const { internal, summary, okko } = d;
 
+        // Комбінований залишок ОККО (картка + талони) в літрах
+        const okkoLiters = summary.combinedBalanceLiters;
+
         // Різниця між розрахунковим і фактичним
         let suggestedAdjust = 0;
         let adjustHint = '';
 
-        if (summary.balanceLiters !== null) {
-            suggestedAdjust = Math.round((summary.balanceLiters - internal.calculatedBalance) * 100) / 100;
+        if (okkoLiters !== undefined && okkoLiters !== null) {
+            suggestedAdjust = Math.round((okkoLiters - internal.calculatedBalance) * 100) / 100;
             if (Math.abs(suggestedAdjust) > 0.5) {
-                adjustHint = `Рекомендоване коригування: <strong>${suggestedAdjust > 0 ? '+' : ''}${suggestedAdjust} л</strong> (щоб привести залишок до ${summary.balanceLiters} л за балансом)`;
+                adjustHint = `Рекомендоване коригування: <strong>${suggestedAdjust > 0 ? '+' : ''}${suggestedAdjust} л</strong> (щоб привести наш залишок ${internal.calculatedBalance.toFixed(1)}л до ОККО ${okkoLiters.toFixed(1)}л)`;
             }
         }
+
+        const breakdownStr = summary.cardBalanceLiters !== undefined
+            ? `картка ${summary.cardBalanceLiters.toFixed(1)}л + талони ${(summary.couponsTotalLiters || 0).toFixed(1)}л`
+            : '';
 
         return `
             <div class="inventory-adjust-block">
                 <h3>🔧 Коригування залишку</h3>
                 <p class="adjust-description">
-                    Розрахунковий залишок: <strong>${internal.calculatedBalance.toFixed(1)} л</strong>
-                    ${summary.balanceLiters !== null ? ` | Залишок за балансом ОККО: <strong>${summary.balanceLiters} л</strong>` : ''}
-                    ${summary.lastDieselPrice > 0 ? ` (${summary.lastDieselPrice.toFixed(2)} грн/л)` : ''}
+                    Наш залишок: <strong>${internal.calculatedBalance.toFixed(1)} л</strong>
+                    ${okkoLiters !== undefined ? ` | Залишок ОККО: <strong>${okkoLiters.toFixed(1)} л</strong> (${breakdownStr})` : ''}
+                    ${summary.lastDieselPrice > 0 ? ` | Ціна ДП: ${summary.lastDieselPrice.toFixed(2)} грн/л` : ''}
                 </p>
                 ${adjustHint ? `<p class="adjust-hint">${adjustHint}</p>` : ''}
                 <div class="adjust-form">
