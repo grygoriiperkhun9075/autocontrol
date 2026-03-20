@@ -810,14 +810,14 @@ class OkkoScraper {
             console.log(`📋 OKKO Transactions: Завантаження за ${dateFrom} — ${dateTo}...`);
 
             const allTransactions = [];
-            let index = 0;
+            let offset = 0;
             const pageSize = 100;
             let hasMore = true;
 
             while (hasMore) {
-                // Спробуємо з contract_id і без
-                const baseParams = `date-from=${dateFrom}&date-to=${dateTo}&index=${index}&size=${pageSize}&status=0`;
-                const url = `${this.baseUrl}/proxy-service/reports/transactions-history?${baseParams}`;
+                // Правильний ендпоінт: /proxy-service/transactions (НЕ reports/transactions-history)
+                // Параметри з підкресленнями: date_from, date_to, offset, size, processed_in_bo
+                const url = `${this.baseUrl}/proxy-service/transactions?date_from=${dateFrom}&date_to=${dateTo}&offset=${offset}&size=${pageSize}&processed_in_bo=0`;
 
                 let resp = await this._request(url);
 
@@ -841,7 +841,7 @@ class OkkoScraper {
                 }
 
                 // Логуємо структуру для діагностики (тільки перший раз)
-                if (index === 0) {
+                if (offset === 0) {
                     const keys = Object.keys(data);
                     console.log(`📋 OKKO Transactions: Response keys: [${keys.join(', ')}]`);
                     if (data.total !== undefined) console.log(`📋 OKKO Transactions: total=${data.total}`);
@@ -872,7 +872,7 @@ class OkkoScraper {
                 }
 
                 // Логуємо ключі першого елементу для діагностики
-                if (index === 0 && items.length > 0) {
+                if (offset === 0 && items.length > 0) {
                     console.log(`📋 OKKO Transactions: Item keys: [${Object.keys(items[0]).join(', ')}]`);
                     console.log(`📋 OKKO Transactions: Приклад: ${JSON.stringify(items[0]).substring(0, 500)}`);
                 }
@@ -897,16 +897,14 @@ class OkkoScraper {
                     });
                 }
 
-                console.log(`📋 OKKO Transactions: Стор. ${index / pageSize + 1} — ${items.length} записів`);
+                console.log(`📋 OKKO Transactions: Стор. ${offset / pageSize + 1} — ${items.length} записів`);
 
                 // Перевіряємо чи є ще сторінки
-                const totalElements = data.totalElements || data.total || data.count || 0;
-                if (items.length < pageSize || (totalElements > 0 && allTransactions.length >= totalElements)) {
-                    hasMore = false;
-                } else if (items.length === 0) {
+                // Відповідь — масив: якщо менше ніж pageSize — це остання сторінка
+                if (items.length < pageSize || items.length === 0) {
                     hasMore = false;
                 } else {
-                    index += pageSize;
+                    offset += pageSize;
                 }
             }
 
