@@ -2968,6 +2968,26 @@
       "note": "",
       "source": "telegram",
       "createdAt": "2026-03-19T07:11:45.308Z"
+    },
+    {
+      "id": "mmzacblyhp1h9tslhkw",
+      "date": "2026-03-20",
+      "liters": -1563.43,
+      "pricePerLiter": 0,
+      "supplier": "Коригування",
+      "note": "Інвентаризація 2026-03-20",
+      "source": "adjustment",
+      "createdAt": "2026-03-20T19:21:48.742Z"
+    },
+    {
+      "id": "mmzadyseluvg2zee1qo",
+      "date": "2026-03-20",
+      "liters": -326.58,
+      "pricePerLiter": 0,
+      "supplier": "Коригування",
+      "note": "Інвентаризація 2026-03-20",
+      "source": "adjustment",
+      "createdAt": "2026-03-20T19:23:05.438Z"
     }
   ],
   "authorizedDrivers": [
