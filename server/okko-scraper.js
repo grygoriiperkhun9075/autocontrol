@@ -785,8 +785,9 @@ class OkkoScraper {
     }
 
     /**
-     * Отримання історії транзакцій з OKKO SSP
+     * Отримання історії транзакцій з OKKO
      * Ендпоінт: GET /proxy-service/reports/transactions-history
+     * Поля з OKKO B2B: Дата, Операція, Номер картки, ПІБ, АЗК, Тип пального, Літраж, Знижка, Ціна, Сума
      * @param {string} dateFrom - дата початку (YYYY-MM-DD)
      * @param {string} dateTo - дата кінця (YYYY-MM-DD)
      * @returns {Array} масив транзакцій
@@ -801,6 +802,11 @@ class OkkoScraper {
                 }
             }
 
+            // Знаходимо контракт
+            if (!this.contractId) {
+                await this.findCouponContract();
+            }
+
             console.log(`📋 OKKO Transactions: Завантаження за ${dateFrom} — ${dateTo}...`);
 
             const allTransactions = [];
@@ -809,7 +815,9 @@ class OkkoScraper {
             let hasMore = true;
 
             while (hasMore) {
-                const url = `${this.baseUrl}/proxy-service/reports/transactions-history?date-from=${dateFrom}&date-to=${dateTo}&index=${index}&size=${pageSize}&status=0`;
+                // Спробуємо з contract_id і без
+                const baseParams = `date-from=${dateFrom}&date-to=${dateTo}&index=${index}&size=${pageSize}&status=0`;
+                const url = `${this.baseUrl}/proxy-service/reports/transactions-history?${baseParams}`;
 
                 let resp = await this._request(url);
 
@@ -822,14 +830,25 @@ class OkkoScraper {
                 }
 
                 if (resp.status !== 200) {
-                    console.error(`❌ OKKO Transactions: ${resp.status} ${resp.body.substring(0, 300)}`);
+                    console.error(`❌ OKKO Transactions: ${resp.status} ${resp.body.substring(0, 500)}`);
                     break;
                 }
 
                 const data = resp.json();
-                if (!data) break;
+                if (!data) {
+                    console.error('❌ OKKO Transactions: Empty response body');
+                    break;
+                }
 
-                // Парсимо відповідь — це може бути {content: [...], totalElements: N} або масив
+                // Логуємо структуру для діагностики (тільки перший раз)
+                if (index === 0) {
+                    const keys = Object.keys(data);
+                    console.log(`📋 OKKO Transactions: Response keys: [${keys.join(', ')}]`);
+                    if (data.total !== undefined) console.log(`📋 OKKO Transactions: total=${data.total}`);
+                    if (data.totalElements !== undefined) console.log(`📋 OKKO Transactions: totalElements=${data.totalElements}`);
+                }
+
+                // Парсимо відповідь — різні можливі формати
                 let items = [];
                 if (Array.isArray(data)) {
                     items = data;
@@ -839,19 +858,39 @@ class OkkoScraper {
                     items = data.transactions;
                 } else if (data.items && Array.isArray(data.items)) {
                     items = data.items;
+                } else if (data.data && Array.isArray(data.data)) {
+                    items = data.data;
+                } else {
+                    // Якщо структура невідома — логуємо і пробуємо знайти масив
+                    for (const key of Object.keys(data)) {
+                        if (Array.isArray(data[key]) && data[key].length > 0) {
+                            items = data[key];
+                            console.log(`📋 OKKO Transactions: Знайдено масив у ключі "${key}" (${items.length} елементів)`);
+                            break;
+                        }
+                    }
+                }
+
+                // Логуємо ключі першого елементу для діагностики
+                if (index === 0 && items.length > 0) {
+                    console.log(`📋 OKKO Transactions: Item keys: [${Object.keys(items[0]).join(', ')}]`);
+                    console.log(`📋 OKKO Transactions: Приклад: ${JSON.stringify(items[0]).substring(0, 500)}`);
                 }
 
                 // Нормалізуємо кожну транзакцію
+                // Поля з OKKO B2B скріншоту: Дата, Операція, Номер картки, ПІБ, АЗК, Тип пального, Літраж, Знижка, Ціна, Сума
                 for (const t of items) {
                     allTransactions.push({
-                        date: t.transaction_date || t.transactionDate || t.date || '',
-                        type: t.transaction_type || t.transactionType || t.type || '',
-                        cardNumber: t.card_num || t.cardNum || t.card_number || '',
-                        productName: t.product_name || t.productName || '',
-                        volume: parseFloat(t.volume || t.liters || t.amount_volume || 0),
-                        price: parseFloat(t.price || t.unit_price || 0),
-                        sum: parseFloat(t.sum || t.total || t.amount || 0),
-                        station: t.station_name || t.stationName || t.station || '',
+                        date: t.transaction_date || t.transactionDate || t.date || t.created_at || '',
+                        type: t.transaction_type || t.transactionType || t.type || t.operation || t.operation_type || '',
+                        cardNumber: t.card_num || t.cardNum || t.card_number || t.cardNumber || '',
+                        driverName: t.person_name || t.personName || t.driver_name || t.driverName || t.name || t.holder_name || t.holderName || '',
+                        productName: t.product_name || t.productName || t.fuel_type || t.fuelType || '',
+                        volume: parseFloat(t.volume || t.liters || t.amount_volume || t.fuel_volume || t.quantity || 0),
+                        discount: parseFloat(t.discount || t.price_discount || t.priceDiscount || 0),
+                        price: parseFloat(t.price || t.unit_price || t.price_with_discount || t.priceWithDiscount || 0),
+                        sum: parseFloat(t.sum || t.total || t.amount || t.total_sum || t.totalSum || 0),
+                        station: t.station_name || t.stationName || t.station || t.azk || t.azk_name || t.azkName || '',
                         status: t.status || '',
                         contractId: t.contract_id || t.contractId || '',
                         rawData: t
@@ -861,8 +900,10 @@ class OkkoScraper {
                 console.log(`📋 OKKO Transactions: Стор. ${index / pageSize + 1} — ${items.length} записів`);
 
                 // Перевіряємо чи є ще сторінки
-                const totalElements = data.totalElements || data.total || 0;
-                if (items.length < pageSize || allTransactions.length >= totalElements) {
+                const totalElements = data.totalElements || data.total || data.count || 0;
+                if (items.length < pageSize || (totalElements > 0 && allTransactions.length >= totalElements)) {
+                    hasMore = false;
+                } else if (items.length === 0) {
                     hasMore = false;
                 } else {
                     index += pageSize;

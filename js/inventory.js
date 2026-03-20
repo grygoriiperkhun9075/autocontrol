@@ -303,10 +303,12 @@ const Inventory = {
                 <td>${this._formatDate(t.date)}</td>
                 <td>${t.type || '—'}</td>
                 <td>${t.cardNumber || '—'}</td>
+                <td>${t.driverName || '—'}</td>
                 <td>${t.productName || '—'}</td>
                 <td class="text-right">${t.volume ? t.volume.toFixed(1) + ' л' : '—'}</td>
+                <td class="text-right">${t.discount ? t.discount.toFixed(2) : '—'}</td>
                 <td class="text-right">${t.price ? t.price.toFixed(2) : '—'}</td>
-                <td class="text-right">${t.sum ? t.sum.toFixed(2) : '—'}</td>
+                <td class="text-right">${t.sum ? t.sum.toFixed(2) + ' грн' : '—'}</td>
                 <td>${t.station || '—'}</td>
             </tr>
         `).join('');
@@ -319,13 +321,15 @@ const Inventory = {
                         <thead>
                             <tr>
                                 <th>Дата</th>
-                                <th>Тип</th>
-                                <th>Картка/Талон</th>
-                                <th>Продукт</th>
-                                <th>Літри</th>
+                                <th>Операція</th>
+                                <th>Картка</th>
+                                <th>ПІБ</th>
+                                <th>Тип пального</th>
+                                <th>Літраж</th>
+                                <th>Знижка</th>
                                 <th>Ціна</th>
                                 <th>Сума</th>
-                                <th>АЗС</th>
+                                <th>АЗК</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -333,8 +337,9 @@ const Inventory = {
                         </tbody>
                         <tfoot>
                             <tr class="total-row">
-                                <td colspan="4"><strong>Підсумок ОККО:</strong></td>
+                                <td colspan="5"><strong>Підсумок ОККО:</strong></td>
                                 <td class="text-right"><strong>${okko.totalVolume.toFixed(1)} л</strong></td>
+                                <td></td>
                                 <td></td>
                                 <td class="text-right"><strong>${okko.totalSum.toFixed(2)} грн</strong></td>
                                 <td></td>
