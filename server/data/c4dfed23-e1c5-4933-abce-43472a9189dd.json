@@ -27,7 +27,7 @@
       "brand": "Volvo",
       "model": "xc60 Андрій",
       "year": "2018",
-      "mileage": 142532,
+      "mileage": 143714,
       "plate": "ВС 0385 ТЕ",
       "color": "Білий",
       "createdAt": "2026-02-11T08:52:26.848Z",
@@ -2446,6 +2446,22 @@
       "driverChatId": 1000125723,
       "driverName": "Yura Kantanist",
       "createdAt": "2026-03-23T04:53:00.062Z"
+    },
+    {
+      "id": "mn38jxjeniptz3ubl1",
+      "carId": "mlhskfogjsy0i3ne2t",
+      "date": "2026-03-23",
+      "liters": 65.5,
+      "pricePerLiter": 86.99,
+      "mileage": 143714,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "cash",
+      "consumption": "5.54",
+      "source": "telegram",
+      "driverChatId": 637125168,
+      "driverName": "Andriy Perkhun",
+      "createdAt": "2026-03-23T13:42:49.226Z"
     }
   ],
   "expenses": [
