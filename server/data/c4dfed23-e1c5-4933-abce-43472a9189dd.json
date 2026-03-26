@@ -2606,6 +2606,19 @@
       "driverChatId": 6763496547,
       "driverName": "Роман Мрака",
       "createdAt": "2026-03-26T09:18:43.612Z"
+    },
+    {
+      "carId": "mlarjt6czn7rpc4lwws",
+      "date": "2026-03-26",
+      "liters": 15.11,
+      "pricePerLiter": 86.99,
+      "mileage": 78336,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "2.29",
+      "id": "mn7ewt6aud0zz5murh",
+      "createdAt": "2026-03-26T11:51:52.498Z"
     }
   ],
   "expenses": [
