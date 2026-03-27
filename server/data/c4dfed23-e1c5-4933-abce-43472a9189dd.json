@@ -2989,6 +2989,15 @@
       "description": "ремонт коробки",
       "id": "mml0r6qnjanzi2drix",
       "createdAt": "2026-03-10T19:44:39.647Z"
+    },
+    {
+      "carId": "mlhtagla6wxl74axsry",
+      "date": "2026-03-24",
+      "category": "repair",
+      "amount": 85500,
+      "description": "Двигун заміна",
+      "id": "mn8qr1ekb1z9jv2fign",
+      "createdAt": "2026-03-27T10:11:04.796Z"
     }
   ],
   "reminders": [
@@ -3284,6 +3293,25 @@
       "note": "Інвентаризація 2026-03-20",
       "source": "adjustment",
       "createdAt": "2026-03-20T19:49:48.839Z"
+    },
+    {
+      "date": "2026-03-26",
+      "liters": 602.48,
+      "pricePerLiter": 82.99,
+      "supplier": "",
+      "note": "",
+      "id": "mn8qnh6wsodu00dl3g",
+      "createdAt": "2026-03-27T10:08:18.632Z"
+    },
+    {
+      "id": "mn8qsbdcnl8x74jfur",
+      "date": "2026-03-27",
+      "liters": 569.92,
+      "pricePerLiter": 0,
+      "supplier": "Коригування",
+      "note": "Інвентаризація 2026-03-27",
+      "source": "adjustment",
+      "createdAt": "2026-03-27T10:12:04.368Z"
     }
   ],
   "authorizedDrivers": [
