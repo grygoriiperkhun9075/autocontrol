@@ -3440,6 +3440,24 @@
       "note": "Інвентаризація 2026-03-27",
       "source": "adjustment",
       "createdAt": "2026-03-27T10:12:04.368Z"
+    },
+    {
+      "date": "2026-03-30",
+      "liters": 595,
+      "pricePerLiter": 83.99,
+      "supplier": "",
+      "note": "",
+      "id": "mned7kzmnpkwjh1o5up",
+      "createdAt": "2026-03-31T08:38:39.106Z"
+    },
+    {
+      "date": "2026-03-23",
+      "liters": 602,
+      "pricePerLiter": 82.99,
+      "supplier": "",
+      "note": "",
+      "id": "mnedafgv53faz99stl8",
+      "createdAt": "2026-03-31T08:40:51.919Z"
     }
   ],
   "authorizedDrivers": [
