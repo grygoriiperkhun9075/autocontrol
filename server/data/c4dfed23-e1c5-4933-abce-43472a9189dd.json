@@ -37,7 +37,7 @@
       "brand": "Iveco",
       "model": "Daily Слічний Степан",
       "year": "2017",
-      "mileage": 307807,
+      "mileage": 308087,
       "plate": "ВС 4938 ТК",
       "color": "Білий",
       "id": "mlhsp3xyvdyuyw2rxf8",
@@ -2939,6 +2939,22 @@
       "driverChatId": 6763496547,
       "driverName": "Роман Мрака",
       "createdAt": "2026-04-01T13:22:04.929Z"
+    },
+    {
+      "id": "mngf6ux2zywvixei05",
+      "carId": "mlhsp3xyvdyuyw2rxf8",
+      "date": "2026-04-01",
+      "liters": 60.73,
+      "pricePerLiter": 87.99,
+      "mileage": 308087,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "21.69",
+      "source": "telegram",
+      "driverChatId": 1207066936,
+      "driverName": "Peleh Pavlo",
+      "createdAt": "2026-04-01T19:09:36.902Z"
     }
   ],
   "expenses": [
