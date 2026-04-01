@@ -16,7 +16,7 @@
       "brand": "Fiat",
       "model": "Ducato Гальчук Юрій",
       "year": "2024",
-      "mileage": 76288,
+      "mileage": 76958,
       "plate": "ВС 1821 ТО",
       "color": "Білий",
       "createdAt": "2026-02-06T13:03:52.572Z",
@@ -2891,6 +2891,22 @@
       "driverChatId": 485693588,
       "driverName": "Stepan",
       "createdAt": "2026-04-01T07:01:57.591Z"
+    },
+    {
+      "id": "mnfq0wzsc2frqo8ktzi",
+      "carId": "mlawcikc1pguw03bp8f",
+      "date": "2026-04-01",
+      "liters": 40,
+      "pricePerLiter": 87.99,
+      "mileage": 76958,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "5.97",
+      "source": "telegram",
+      "driverChatId": 867531613,
+      "driverName": "Taras Kozak",
+      "createdAt": "2026-04-01T07:25:09.256Z"
     }
   ],
   "expenses": [
@@ -3206,6 +3222,24 @@
       "description": "Двигун заміна",
       "id": "mn8qr1ekb1z9jv2fign",
       "createdAt": "2026-03-27T10:11:04.796Z"
+    },
+    {
+      "carId": "mlhsp3xyvdyuyw2rxf8",
+      "date": "2026-03-28",
+      "category": "repair",
+      "amount": 27800,
+      "description": "Ремонт супортів, огляд ходової",
+      "id": "mnfps9neeczi5klw8ve",
+      "createdAt": "2026-04-01T07:18:25.754Z"
+    },
+    {
+      "carId": "mlawcikc1pguw03bp8f",
+      "date": "2026-03-28",
+      "category": "maintenance",
+      "amount": 20280,
+      "description": "ТО, заміна стартера",
+      "id": "mnfpun5j0601bll6yyr",
+      "createdAt": "2026-04-01T07:20:16.567Z"
     }
   ],
   "reminders": [
@@ -3258,6 +3292,16 @@
       "completed": false,
       "id": "mmc4wpum61l7aglhiz8",
       "createdAt": "2026-03-04T14:31:00.574Z"
+    },
+    {
+      "carId": "mlawcikc1pguw03bp8f",
+      "type": "maintenance",
+      "date": "2027-04-01",
+      "mileage": 87000,
+      "note": "то",
+      "completed": false,
+      "id": "mnfpvtfpv3v5hnlf75d",
+      "createdAt": "2026-04-01T07:21:11.365Z"
     }
   ],
   "coupons": [
