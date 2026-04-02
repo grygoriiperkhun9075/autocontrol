@@ -1846,12 +1846,13 @@
       "mileage": 73548,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "8.75",
       "source": "telegram",
       "driverChatId": 867531613,
       "driverName": "Taras Kozak",
-      "createdAt": "2026-03-11T07:30:34.899Z"
+      "createdAt": "2026-03-11T07:30:34.899Z",
+      "updatedAt": "2026-04-02T08:01:24.048Z"
     },
     {
       "id": "mmlyq9pbpt0b78sgqxb",
@@ -1862,12 +1863,13 @@
       "mileage": 100000,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": 0,
       "source": "telegram",
       "driverChatId": 1458664631,
       "driverName": "Христина Перхун",
-      "createdAt": "2026-03-11T11:35:43.775Z"
+      "createdAt": "2026-03-11T11:35:43.775Z",
+      "updatedAt": "2026-04-02T08:01:37.030Z"
     },
     {
       "id": "mmm5uvuzb6utvmttega",
@@ -2054,12 +2056,13 @@
       "mileage": 74433,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "12.96",
       "source": "telegram",
       "driverChatId": 867531613,
       "driverName": "Taras Kozak",
-      "createdAt": "2026-03-16T10:23:50.878Z"
+      "createdAt": "2026-03-16T10:23:50.878Z",
+      "updatedAt": "2026-04-02T08:01:10.814Z"
     },
     {
       "id": "mmtbh9uyer5qmbsgk24",
@@ -2144,12 +2147,13 @@
       "mileage": 137229,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "13.75",
       "source": "telegram",
       "driverChatId": 1000125723,
       "driverName": "Yura Kantanist",
-      "createdAt": "2026-03-17T11:20:51.639Z"
+      "createdAt": "2026-03-17T11:20:51.639Z",
+      "updatedAt": "2026-04-02T08:01:02.863Z"
     },
     {
       "id": "mmuj7p50sdoapm6oixm",
@@ -2424,12 +2428,13 @@
       "mileage": 75891,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "8.94",
       "source": "telegram",
       "driverChatId": 867531613,
       "driverName": "Taras Kozak",
-      "createdAt": "2026-03-23T04:41:27.048Z"
+      "createdAt": "2026-03-23T04:41:27.048Z",
+      "updatedAt": "2026-04-02T08:00:42.847Z"
     },
     {
       "id": "mn2pmkv2uueivfuaere",
@@ -2440,12 +2445,13 @@
       "mileage": 137931,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "9.97",
       "source": "telegram",
       "driverChatId": 1000125723,
       "driverName": "Yura Kantanist",
-      "createdAt": "2026-03-23T04:53:00.062Z"
+      "createdAt": "2026-03-23T04:53:00.062Z",
+      "updatedAt": "2026-04-02T08:00:48.230Z"
     },
     {
       "id": "mn38jxjeniptz3ubl1",
@@ -2456,12 +2462,13 @@
       "mileage": 143714,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "5.54",
       "source": "telegram",
       "driverChatId": 637125168,
       "driverName": "Andriy Perkhun",
-      "createdAt": "2026-03-23T13:42:49.226Z"
+      "createdAt": "2026-03-23T13:42:49.226Z",
+      "updatedAt": "2026-04-02T08:00:52.814Z"
     },
     {
       "id": "mn4aqu1gl8xfi1zjuu",
@@ -2629,12 +2636,13 @@
       "mileage": 253003,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "11.73",
       "source": "telegram",
       "driverChatId": 5218122680,
       "driverName": "Павло",
-      "createdAt": "2026-03-26T13:38:57.909Z"
+      "createdAt": "2026-03-26T13:38:57.909Z",
+      "updatedAt": "2026-04-02T08:00:35.613Z"
     },
     {
       "id": "mn7y3sm4qp6zq0lshcd",
@@ -2741,12 +2749,13 @@
       "mileage": 347273,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "10.34",
       "source": "telegram",
       "driverChatId": 1000125723,
       "driverName": "Yura Kantanist",
-      "createdAt": "2026-03-30T02:55:42.779Z"
+      "createdAt": "2026-03-30T02:55:42.779Z",
+      "updatedAt": "2026-04-02T07:59:32.247Z"
     },
     {
       "id": "mncm2jsttsf1mbasooa",
@@ -2757,12 +2766,13 @@
       "mileage": 169168,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "8.33",
       "source": "telegram",
       "driverChatId": 1000125723,
       "driverName": "Yura Kantanist",
-      "createdAt": "2026-03-30T03:11:08.477Z"
+      "createdAt": "2026-03-30T03:11:08.477Z",
+      "updatedAt": "2026-04-02T08:00:25.097Z"
     },
     {
       "id": "mncwz487z8qmfqzg8do",
@@ -2805,12 +2815,13 @@
       "mileage": 139595,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "8.29",
       "source": "telegram",
       "driverChatId": 1000125723,
       "driverName": "Yura Kantanist",
-      "createdAt": "2026-03-31T06:09:55.435Z"
+      "createdAt": "2026-03-31T06:09:55.435Z",
+      "updatedAt": "2026-04-02T07:59:18.265Z"
     },
     {
       "id": "mnegvr7ypfa9cel5p9o",
@@ -2821,12 +2832,13 @@
       "mileage": 302597,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "16.94",
       "source": "telegram",
       "driverChatId": 867531613,
       "driverName": "Taras Kozak",
-      "createdAt": "2026-03-31T10:21:25.775Z"
+      "createdAt": "2026-03-31T10:21:25.775Z",
+      "updatedAt": "2026-04-02T07:59:24.681Z"
     },
     {
       "id": "mnfhdt01tialgkvsgcn",
@@ -2917,12 +2929,13 @@
       "mileage": 253390,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "10.34",
       "source": "telegram",
       "driverChatId": 5218122680,
       "driverName": "Павло",
-      "createdAt": "2026-04-01T11:10:00.510Z"
+      "createdAt": "2026-04-01T11:10:00.510Z",
+      "updatedAt": "2026-04-02T07:59:11.015Z"
     },
     {
       "id": "mng2rxflpyhqthcvn3e",
