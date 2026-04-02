@@ -3407,6 +3407,15 @@
       "description": "Амортизатори передні, подушки амортизатора, подушка коробки поздовжня",
       "id": "mnh6yc4l464mbwyksyv",
       "createdAt": "2026-04-02T08:06:48.549Z"
+    },
+    {
+      "carId": "mlarjt6czn7rpc4lwws",
+      "date": "2026-03-31",
+      "category": "maintenance",
+      "amount": 16407,
+      "description": "Гальмівні передні, то масло двигуна",
+      "id": "mnhcywtwynj53qnfh7",
+      "createdAt": "2026-04-02T10:55:13.076Z"
     }
   ],
   "reminders": [
@@ -3469,6 +3478,16 @@
       "completed": false,
       "id": "mnfpvtfpv3v5hnlf75d",
       "createdAt": "2026-04-01T07:21:11.365Z"
+    },
+    {
+      "carId": "mlarjt6czn7rpc4lwws",
+      "type": "maintenance",
+      "date": "2027-04-02",
+      "mileage": 91000,
+      "note": "Заміна масла двигуна",
+      "completed": false,
+      "id": "mnhd0hhpx7rv275k7em",
+      "createdAt": "2026-04-02T10:56:26.509Z"
     }
   ],
   "coupons": [
