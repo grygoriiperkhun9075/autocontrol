@@ -3398,6 +3398,15 @@
       "description": "ТО, заміна стартера",
       "id": "mnfpun5j0601bll6yyr",
       "createdAt": "2026-04-01T07:20:16.567Z"
+    },
+    {
+      "carId": "mmem4ugo2osplisc8zy",
+      "date": "2026-04-02",
+      "category": "repair",
+      "amount": 17650,
+      "description": "Амортизатори передні, подушки амортизатора, подушка коробки поздовжня",
+      "id": "mnh6yc4l464mbwyksyv",
+      "createdAt": "2026-04-02T08:06:48.549Z"
     }
   ],
   "reminders": [
