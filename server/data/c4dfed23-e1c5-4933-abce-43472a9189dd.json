@@ -3045,12 +3045,13 @@
       "mileage": 144318,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "9.35",
       "source": "telegram",
       "driverChatId": 637125168,
       "driverName": "Andriy Perkhun",
-      "createdAt": "2026-04-02T07:31:19.827Z"
+      "createdAt": "2026-04-02T07:31:19.827Z",
+      "updatedAt": "2026-04-02T07:51:07.319Z"
     }
   ],
   "expenses": [
