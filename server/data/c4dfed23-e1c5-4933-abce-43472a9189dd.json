@@ -3726,6 +3726,24 @@
       "note": "",
       "id": "mnedafgv53faz99stl8",
       "createdAt": "2026-03-31T08:40:51.919Z"
+    },
+    {
+      "date": "2026-04-01",
+      "liters": 582,
+      "pricePerLiter": 85.9,
+      "supplier": "",
+      "note": "",
+      "id": "mnh68040ksxpzxrj45r",
+      "createdAt": "2026-04-02T07:46:19.920Z"
+    },
+    {
+      "date": "2026-04-02",
+      "liters": 326,
+      "pricePerLiter": 85.9,
+      "supplier": "",
+      "note": "",
+      "id": "mnh6a2eik5h10ok8evs",
+      "createdAt": "2026-04-02T07:47:56.202Z"
     }
   ],
   "authorizedDrivers": [
