@@ -16,7 +16,7 @@
       "brand": "Fiat",
       "model": "Ducato Гальчук Юрій",
       "year": "2024",
-      "mileage": 77374,
+      "mileage": 78138,
       "plate": "ВС 1821 ТО",
       "color": "Білий",
       "createdAt": "2026-02-06T13:03:52.572Z",
@@ -3113,6 +3113,22 @@
       "driverChatId": 1207066936,
       "driverName": "Peleh Pavlo",
       "createdAt": "2026-04-02T18:34:17.127Z"
+    },
+    {
+      "id": "mnidlm71xkgx45ejz9a",
+      "carId": "mlawcikc1pguw03bp8f",
+      "date": "2026-04-03",
+      "liters": 67.4,
+      "pricePerLiter": 89.9,
+      "mileage": 78138,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "cash",
+      "consumption": "8.82",
+      "source": "telegram",
+      "driverChatId": 5098786748,
+      "driverName": "Юрій Юрій",
+      "createdAt": "2026-04-03T04:00:38.557Z"
     }
   ],
   "expenses": [
