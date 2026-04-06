@@ -58,7 +58,7 @@
       "brand": "Fiat",
       "model": "Ducato Кантаніст Юра",
       "year": "2022",
-      "mileage": 139595,
+      "mileage": 140261,
       "plate": "ВС 4219 РС",
       "color": "Білий",
       "id": "mlhsvdyy69o0tllt9rm",
@@ -3225,6 +3225,22 @@
       "driverChatId": 1324474106,
       "driverName": "Grygorii Perkhun",
       "createdAt": "2026-04-04T12:34:02.820Z"
+    },
+    {
+      "id": "mnmzqud1ufd11tooiz",
+      "carId": "mlhsvdyy69o0tllt9rm",
+      "date": "2026-04-06",
+      "liters": 70,
+      "pricePerLiter": 92,
+      "mileage": 140261,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "cash",
+      "consumption": "10.51",
+      "source": "telegram",
+      "driverChatId": 867531613,
+      "driverName": "Taras Kozak",
+      "createdAt": "2026-04-06T09:31:38.677Z"
     }
   ],
   "expenses": [
