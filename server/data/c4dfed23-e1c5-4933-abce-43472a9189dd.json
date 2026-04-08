@@ -3685,6 +3685,15 @@
       "description": "Гальмівні передні, то масло двигуна",
       "id": "mnhcywtwynj53qnfh7",
       "createdAt": "2026-04-02T10:55:13.076Z"
+    },
+    {
+      "carId": "mlhsrexzbha1c7w0ma9",
+      "date": "2026-04-07",
+      "category": "tires",
+      "amount": 43000,
+      "description": "4шт мішлен літо",
+      "id": "mnpr4qjuu3p923la4oe",
+      "createdAt": "2026-04-08T07:53:48.906Z"
     }
   ],
   "reminders": [
@@ -4055,6 +4064,24 @@
       "note": "",
       "id": "mnh6a2eik5h10ok8evs",
       "createdAt": "2026-04-02T07:47:56.202Z"
+    },
+    {
+      "date": "2026-04-03",
+      "liters": 582,
+      "pricePerLiter": 85.9,
+      "supplier": "",
+      "note": "",
+      "id": "mnpr1ao9w77sivs9uvg",
+      "createdAt": "2026-04-08T07:51:08.361Z"
+    },
+    {
+      "date": "2026-04-06",
+      "liters": 568,
+      "pricePerLiter": 88,
+      "supplier": "",
+      "note": "",
+      "id": "mnpr23ma75w65o8ebd",
+      "createdAt": "2026-04-08T07:51:45.875Z"
     }
   ],
   "authorizedDrivers": [
