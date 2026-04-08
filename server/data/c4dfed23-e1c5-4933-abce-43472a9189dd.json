@@ -99,7 +99,7 @@
       "brand": "Volkswagen",
       "model": "LT Левків Віталій",
       "year": "2004",
-      "mileage": 347913,
+      "mileage": 348197,
       "plate": "ВС3157АН",
       "color": "Білий",
       "id": "mlhtagla6wxl74axsry",
@@ -3305,6 +3305,22 @@
       "driverChatId": 5098786748,
       "driverName": "Юрій Юрій",
       "createdAt": "2026-04-07T14:20:21.053Z"
+    },
+    {
+      "id": "mnpqi3slbxvm3fp6lvm",
+      "carId": "mlhtagla6wxl74axsry",
+      "date": "2026-04-08",
+      "liters": 33.12,
+      "pricePerLiter": 93.9,
+      "mileage": 348197,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "11.66",
+      "source": "telegram",
+      "driverChatId": 485693588,
+      "driverName": "Stepan",
+      "createdAt": "2026-04-08T07:36:12.981Z"
     }
   ],
   "expenses": [
