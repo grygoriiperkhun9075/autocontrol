@@ -151,7 +151,7 @@
       "brand": "BMW",
       "model": "X2",
       "year": "2018",
-      "mileage": 116908,
+      "mileage": 117342,
       "plate": "BC2415OC",
       "color": "Сірий",
       "fuelNorm": 9,
@@ -3539,6 +3539,22 @@
       "driverChatId": 485693588,
       "driverName": "Stepan",
       "createdAt": "2026-04-15T06:05:19.210Z"
+    },
+    {
+      "id": "mo02bt8fgo5057nxjd9",
+      "carId": "mmem4ugo2osplisc8zy",
+      "date": "2026-04-15",
+      "liters": 51.04,
+      "pricePerLiter": 76.9,
+      "mileage": 117342,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "11.76",
+      "source": "telegram",
+      "driverChatId": 1324474106,
+      "driverName": "Grygorii Perkhun",
+      "createdAt": "2026-04-15T13:04:56.511Z"
     }
   ],
   "expenses": [
