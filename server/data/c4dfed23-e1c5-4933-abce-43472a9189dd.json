@@ -4094,6 +4094,24 @@
       "id": "mo2jojery8o4e4k0je",
       "createdAt": "2026-04-17T06:46:16.131Z",
       "updatedAt": "2026-04-17T06:46:46.782Z"
+    },
+    {
+      "carId": "mlawcikc1pguw03bp8f",
+      "date": "2026-04-11",
+      "category": "repair",
+      "amount": 37890,
+      "description": "Заміна вітрового скла, колодки вкруг 79232км",
+      "id": "mo2k0uaiauamur5h9cs",
+      "createdAt": "2026-04-17T06:55:50.106Z"
+    },
+    {
+      "carId": "mlhsp3xyvdyuyw2rxf8",
+      "date": "2026-04-10",
+      "category": "repair",
+      "amount": 16045,
+      "description": "Заміна радіатора 311283км",
+      "id": "mo2k6v0shp52xybcebd",
+      "createdAt": "2026-04-17T07:00:30.988Z"
     }
   ],
   "reminders": [
@@ -4170,12 +4188,13 @@
     {
       "carId": "mlhsvdyy69o0tllt9rm",
       "type": "maintenance",
-      "date": "2026-04-17",
+      "date": "2027-04-17",
       "mileage": 155000,
       "note": "",
       "completed": false,
       "id": "mo2jl8w4wjm3oy5uy2r",
-      "createdAt": "2026-04-17T06:43:42.532Z"
+      "createdAt": "2026-04-17T06:43:42.532Z",
+      "updatedAt": "2026-04-17T07:01:09.173Z"
     }
   ],
   "coupons": [
