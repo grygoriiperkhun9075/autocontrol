@@ -4075,6 +4075,25 @@
       "description": "4шт мішлен літо",
       "id": "mnpr4qjuu3p923la4oe",
       "createdAt": "2026-04-08T07:53:48.906Z"
+    },
+    {
+      "carId": "mlhsvdyy69o0tllt9rm",
+      "date": "2026-04-10",
+      "category": "maintenance",
+      "amount": 10482,
+      "description": "ТО, огляд ходової 141447",
+      "id": "mo2jkdh5muuvac9odr",
+      "createdAt": "2026-04-17T06:43:01.817Z"
+    },
+    {
+      "carId": "mlht3qfqr6uqlnwe4hq",
+      "date": "2026-04-15",
+      "category": "repair",
+      "amount": 44960,
+      "description": "Ремонт ходової, заміна гальмівних дисків перід, заміна колодок вкруг, \nЗаміна масла в коробці 121822км",
+      "id": "mo2jojery8o4e4k0je",
+      "createdAt": "2026-04-17T06:46:16.131Z",
+      "updatedAt": "2026-04-17T06:46:46.782Z"
     }
   ],
   "reminders": [
@@ -4147,6 +4166,16 @@
       "completed": false,
       "id": "mnhd0hhpx7rv275k7em",
       "createdAt": "2026-04-02T10:56:26.509Z"
+    },
+    {
+      "carId": "mlhsvdyy69o0tllt9rm",
+      "type": "maintenance",
+      "date": "2026-04-17",
+      "mileage": 155000,
+      "note": "",
+      "completed": false,
+      "id": "mo2jl8w4wjm3oy5uy2r",
+      "createdAt": "2026-04-17T06:43:42.532Z"
     }
   ],
   "coupons": [
