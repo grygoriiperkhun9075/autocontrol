@@ -4735,6 +4735,33 @@
       "note": "",
       "id": "mnpr23ma75w65o8ebd",
       "createdAt": "2026-04-08T07:51:45.875Z"
+    },
+    {
+      "date": "2026-04-09",
+      "liters": 562,
+      "pricePerLiter": 88.9,
+      "supplier": "",
+      "note": "",
+      "id": "mob5vnanufhn6ei946i",
+      "createdAt": "2026-04-23T07:29:48.719Z"
+    },
+    {
+      "date": "2026-04-15",
+      "liters": 556,
+      "pricePerLiter": 89.9,
+      "supplier": "",
+      "note": "",
+      "id": "mob5wzhb84fco824hqc",
+      "createdAt": "2026-04-23T07:30:51.167Z"
+    },
+    {
+      "date": "2026-04-23",
+      "liters": 667,
+      "pricePerLiter": 89.9,
+      "supplier": "",
+      "note": "",
+      "id": "mob5xopno0n9qefkgmq",
+      "createdAt": "2026-04-23T07:31:23.867Z"
     }
   ],
   "authorizedDrivers": [
