@@ -3773,12 +3773,13 @@
       "mileage": 312094,
       "station": "",
       "fullTank": false,
-      "paymentMethod": "cash",
+      "paymentMethod": "coupon",
       "consumption": "17.47",
       "source": "telegram",
       "driverChatId": 5098786748,
       "driverName": "Юрій Юрій",
-      "createdAt": "2026-04-18T06:37:08.038Z"
+      "createdAt": "2026-04-18T06:37:08.038Z",
+      "updatedAt": "2026-04-23T07:47:33.181Z"
     },
     {
       "id": "mo75f1994euf1g3bsvy",
