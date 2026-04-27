@@ -109,7 +109,7 @@
       "brand": "Iveco",
       "model": "DailyФургон Мрака Роман",
       "year": "2020",
-      "mileage": 173427,
+      "mileage": 173941,
       "plate": "ВС5026ТО",
       "color": "Білий",
       "id": "mlhtc881w4r2xxpe7yd",
@@ -4052,6 +4052,22 @@
       "driverChatId": 5098786748,
       "driverName": "Юрій Юрій",
       "createdAt": "2026-04-27T10:27:53.979Z"
+    },
+    {
+      "id": "moh5xsdmyby5tmfry2k",
+      "carId": "mlhtc881w4r2xxpe7yd",
+      "date": "2026-04-27",
+      "liters": 65.07,
+      "pricePerLiter": 89.9,
+      "mileage": 173941,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "12.66",
+      "source": "telegram",
+      "driverChatId": 6763496547,
+      "driverName": "Роман Мрака",
+      "createdAt": "2026-04-27T12:18:05.674Z"
     }
   ],
   "expenses": [
