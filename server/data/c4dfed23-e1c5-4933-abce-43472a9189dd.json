@@ -47,7 +47,7 @@
       "brand": "Iveco",
       "model": "Daily Пелех Павло",
       "year": "2017",
-      "mileage": 324000,
+      "mileage": 324341,
       "plate": "ВС0571ОТ",
       "color": "Білий",
       "id": "mlhsrexzbha1c7w0ma9",
@@ -4164,6 +4164,22 @@
       "driverChatId": 1324474106,
       "driverName": "Grygorii Perkhun",
       "createdAt": "2026-04-28T09:55:24.873Z"
+    },
+    {
+      "id": "moiud3577e1ec7czt9x",
+      "carId": "mlhsrexzbha1c7w0ma9",
+      "date": "2026-04-28",
+      "liters": 20,
+      "pricePerLiter": 89.9,
+      "mileage": 324341,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "5.87",
+      "source": "telegram",
+      "driverChatId": 1207066936,
+      "driverName": "Peleh Pavlo",
+      "createdAt": "2026-04-28T16:29:36.427Z"
     }
   ],
   "expenses": [
@@ -4987,6 +5003,16 @@
       "note": "",
       "id": "mob5xopno0n9qefkgmq",
       "createdAt": "2026-04-23T07:31:23.867Z"
+    },
+    {
+      "id": "moiualj2kcqjvfsf5rj",
+      "date": "2026-04-28",
+      "liters": 70,
+      "pricePerLiter": 89.9,
+      "supplier": "",
+      "note": "",
+      "source": "telegram",
+      "createdAt": "2026-04-28T16:27:40.287Z"
     }
   ],
   "authorizedDrivers": [
