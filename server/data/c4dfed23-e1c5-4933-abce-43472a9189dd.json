@@ -5018,23 +5018,50 @@
       "createdAt": "2026-04-23T07:30:51.167Z"
     },
     {
-      "date": "2026-04-23",
-      "liters": 667,
+      "date": "2026-04-17",
+      "liters": 667.4,
       "pricePerLiter": 89.9,
       "supplier": "",
       "note": "",
-      "id": "mob5xopno0n9qefkgmq",
-      "createdAt": "2026-04-23T07:31:23.867Z"
+      "id": "mojp9qisqgcs2ptzcz",
+      "createdAt": "2026-04-29T06:54:48.196Z"
     },
     {
-      "id": "moiualj2kcqjvfsf5rj",
-      "date": "2026-04-28",
-      "liters": 70,
-      "pricePerLiter": 89.9,
+      "date": "2026-04-21",
+      "liters": 582.07,
+      "pricePerLiter": 85.9,
       "supplier": "",
       "note": "",
-      "source": "telegram",
-      "createdAt": "2026-04-28T16:27:40.287Z"
+      "id": "mojpba7d2fqzmdvgtj4",
+      "createdAt": "2026-04-29T06:56:00.361Z"
+    },
+    {
+      "date": "2026-04-22",
+      "liters": 582.07,
+      "pricePerLiter": 85.9,
+      "supplier": "",
+      "note": "",
+      "id": "mojpc1gf6612wy9xvb8",
+      "createdAt": "2026-04-29T06:56:35.679Z"
+    },
+    {
+      "date": "2026-04-27",
+      "liters": 582.07,
+      "pricePerLiter": 85.9,
+      "supplier": "",
+      "note": "",
+      "id": "mojpdqg9exgwch2qfzw",
+      "createdAt": "2026-04-29T06:57:54.729Z"
+    },
+    {
+      "id": "mojpggx6i2qfmilqm5h",
+      "date": "2026-04-29",
+      "liters": -1814.62,
+      "pricePerLiter": 0,
+      "supplier": "Коригування",
+      "note": "Інвентаризація 2026-04-29",
+      "source": "adjustment",
+      "createdAt": "2026-04-29T07:00:02.346Z"
     }
   ],
   "authorizedDrivers": [
