@@ -47,7 +47,7 @@
       "brand": "Iveco",
       "model": "Daily Пелех Павло",
       "year": "2017",
-      "mileage": 324341,
+      "mileage": 324440,
       "plate": "ВС0571ОТ",
       "color": "Білий",
       "id": "mlhsrexzbha1c7w0ma9",
@@ -4180,6 +4180,19 @@
       "driverChatId": 1207066936,
       "driverName": "Peleh Pavlo",
       "createdAt": "2026-04-28T16:29:36.427Z"
+    },
+    {
+      "carId": "mlhsrexzbha1c7w0ma9",
+      "date": "2026-04-29",
+      "liters": 84.28,
+      "pricePerLiter": 89.9,
+      "mileage": 324440,
+      "station": "",
+      "fullTank": true,
+      "paymentMethod": "coupon",
+      "consumption": "85.13",
+      "id": "mojoprzwmyaum7ycz4i",
+      "createdAt": "2026-04-29T06:39:16.988Z"
     }
   ],
   "expenses": [
@@ -4577,6 +4590,15 @@
       "description": "Заміна радіатора 311283км",
       "id": "mo2k6v0shp52xybcebd",
       "createdAt": "2026-04-17T07:00:30.988Z"
+    },
+    {
+      "carId": "mlhsrexzbha1c7w0ma9",
+      "date": "2026-04-29",
+      "category": "repair",
+      "amount": 18490,
+      "description": "Заміна вітрового скла",
+      "id": "mojosc40cx7aw6uq4ot",
+      "createdAt": "2026-04-29T06:41:16.368Z"
     }
   ],
   "reminders": [
