@@ -69,7 +69,7 @@
       "brand": "Fiat",
       "model": "Ducato Козак Тарас",
       "year": "2024",
-      "mileage": 124645,
+      "mileage": 125508,
       "plate": "ВС5939ТК",
       "color": "Білий",
       "id": "mlht3qfqr6uqlnwe4hq",
@@ -4241,6 +4241,22 @@
       "driverChatId": 637125168,
       "driverName": "Andriy Perkhun",
       "createdAt": "2026-04-30T03:55:51.834Z"
+    },
+    {
+      "id": "mokyi2rhtgrvcv2tkt",
+      "carId": "mlht3qfqr6uqlnwe4hq",
+      "date": "2026-04-30",
+      "liters": 50,
+      "pricePerLiter": 89.9,
+      "mileage": 125508,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "5.79",
+      "source": "telegram",
+      "driverChatId": 867531613,
+      "driverName": "Taras Kozak",
+      "createdAt": "2026-04-30T04:01:00.029Z"
     }
   ],
   "expenses": [
