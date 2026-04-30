@@ -79,7 +79,7 @@
       "brand": "Fiat",
       "model": "Ducato Осоховський Павло",
       "year": "2022",
-      "mileage": 255327,
+      "mileage": 255647,
       "plate": "ВС6951РЕ",
       "color": "Білий",
       "id": "mlht5bk7xr6dabvsvrn",
@@ -4209,6 +4209,22 @@
       "driverChatId": 384511645,
       "driverName": "Rostik Datskiv",
       "createdAt": "2026-04-29T10:13:04.854Z"
+    },
+    {
+      "id": "mokxk8ugp9os48kcfwc",
+      "carId": "mlht5bk7xr6dabvsvrn",
+      "date": "2026-04-30",
+      "liters": 69,
+      "pricePerLiter": 89.9,
+      "mileage": 255647,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "cash",
+      "consumption": "21.56",
+      "source": "telegram",
+      "driverChatId": 5218122680,
+      "driverName": "Павло",
+      "createdAt": "2026-04-30T03:34:41.608Z"
     }
   ],
   "expenses": [
