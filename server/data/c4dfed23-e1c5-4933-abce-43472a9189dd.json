@@ -140,7 +140,7 @@
       "brand": "BMW",
       "model": "X5e45",
       "year": "2019",
-      "mileage": 124147,
+      "mileage": 124961,
       "plate": "KE6509AO",
       "color": "Білий",
       "fuelNorm": 10,
@@ -4417,6 +4417,22 @@
       "driverChatId": 6763496547,
       "driverName": "Роман Мрака",
       "createdAt": "2026-05-01T13:57:23.064Z"
+    },
+    {
+      "id": "mor6q5hcmh3x7lyowgs",
+      "carId": "mmelym3aeew3u731pqm",
+      "date": "2026-05-04",
+      "liters": 63.1,
+      "pricePerLiter": 76.9,
+      "mileage": 124961,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "7.75",
+      "source": "telegram",
+      "driverChatId": 1324474106,
+      "driverName": "Grygorii Perkhun",
+      "createdAt": "2026-05-04T12:37:50.784Z"
     }
   ],
   "expenses": [
