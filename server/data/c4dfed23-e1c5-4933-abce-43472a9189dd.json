@@ -4705,6 +4705,22 @@
       "driverChatId": 5098786748,
       "driverName": "Юрій Юрій",
       "createdAt": "2026-05-12T15:19:57.870Z"
+    },
+    {
+      "id": "mp3lyrg367gw75k9dpg",
+      "carId": "mmelym3aeew3u731pqm",
+      "date": "2026-05-13",
+      "liters": 58.1,
+      "pricePerLiter": 77.9,
+      "mileage": 124961,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "7.14",
+      "source": "telegram",
+      "driverChatId": 1324474106,
+      "driverName": "Grygorii Perkhun",
+      "createdAt": "2026-05-13T05:17:40.852Z"
     }
   ],
   "expenses": [
