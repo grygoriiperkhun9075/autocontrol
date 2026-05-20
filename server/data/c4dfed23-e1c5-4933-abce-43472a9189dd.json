@@ -5,7 +5,7 @@
       "brand": "Fiat",
       "model": "Ducato Бабійчук Валентин",
       "year": "2024",
-      "mileage": 85846,
+      "mileage": 86406,
       "plate": "BC 3946 TC",
       "color": "Білий",
       "createdAt": "2026-02-06T10:49:34.837Z",
@@ -5009,6 +5009,22 @@
       "driverChatId": 794761428,
       "driverName": "Oleg Dybnutzkij",
       "createdAt": "2026-05-20T03:57:43.285Z"
+    },
+    {
+      "id": "mpdmoasit5yovnqjdek",
+      "carId": "mlarjt6czn7rpc4lwws",
+      "date": "2026-05-20",
+      "liters": 40,
+      "pricePerLiter": 89.9,
+      "mileage": 86406,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "cash",
+      "consumption": "7.14",
+      "source": "telegram",
+      "driverChatId": 5218122680,
+      "driverName": "Павло",
+      "createdAt": "2026-05-20T05:35:14.082Z"
     }
   ],
   "expenses": [
