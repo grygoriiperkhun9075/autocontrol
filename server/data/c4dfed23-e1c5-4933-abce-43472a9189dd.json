@@ -89,7 +89,7 @@
       "brand": "Iveco",
       "model": "Daily Козак Тарас",
       "year": "2017",
-      "mileage": 309224,
+      "mileage": 309631,
       "plate": "ВС9348ТМ",
       "color": "Білий",
       "id": "mlht863eqp1dw21nqrs",
@@ -5489,6 +5489,22 @@
       "driverChatId": 794761428,
       "driverName": "Олег Дубницький",
       "createdAt": "2026-05-28T15:53:41.016Z"
+    },
+    {
+      "id": "mppviajd4ozrfbwt0e",
+      "carId": "mlht863eqp1dw21nqrs",
+      "date": "2026-05-28",
+      "liters": 65.45,
+      "pricePerLiter": 89.9,
+      "mileage": 309631,
+      "station": "",
+      "fullTank": false,
+      "paymentMethod": "coupon",
+      "consumption": "16.08",
+      "source": "telegram",
+      "driverChatId": 1000125723,
+      "driverName": "Yura Kantanist",
+      "createdAt": "2026-05-28T19:15:44.473Z"
     }
   ],
   "expenses": [
