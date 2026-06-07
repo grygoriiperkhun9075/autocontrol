@@ -21,54 +21,94 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Відновлення даних з GitHub бекапу (перед завантаженням)
-BackupManager.restore().then(() => {
-    console.log('📦 Restore завершено');
-}).catch(e => {
-    console.error('⚠️ Restore помилка:', e.message);
-});
-
-// Ініціалізація
-Auth.init();
-
-// Авто-створення компанії якщо BOT_TOKEN є, але компаній немає
-if (process.env.BOT_TOKEN) {
+// Перерахунок consumption для всіх компаній (одноразовий при старті + API ендпоінт)
+function recalculateAll() {
     const companies = Auth.getAllCompanies();
-    if (companies.length === 0) {
-        // Створюємо дефолтну компанію автоматично
-        const defaultPassword = process.env.ADMIN_PASSWORD || 'test1234';
-        const result = Auth.register({
-            companyName: process.env.COMPANY_NAME || 'AutoControl',
-            login: process.env.ADMIN_LOGIN || 'admin',
-            password: defaultPassword,
-            botToken: process.env.BOT_TOKEN
-        });
-        if (result.success) {
-            console.log(`🏢 Авто-створено компанію "${result.company.name}" з BOT_TOKEN`);
+    let total = 0;
+    companies.forEach(c => {
+        const storage = getStorage(c.id);
+        const updated = storage.recalculateAllConsumption();
+        total += updated;
+        if (updated > 0) console.log(`♻️ Перераховано ${updated} записів для "${c.name}"`);
+    });
+    return total;
+}
 
-            // Авто-міграція старих даних
-            const oldDataFile = path.join(__dirname, 'data.json');
-            if (fs.existsSync(oldDataFile)) {
-                try {
-                    const oldData = JSON.parse(fs.readFileSync(oldDataFile, 'utf-8'));
-                    const storage = getStorage(result.company.id);
-                    storage.importData(oldData);
-                    fs.renameSync(oldDataFile, oldDataFile + '.migrated');
-                    console.log('📦 Старі дані мігровано автоматично');
-                } catch (e) {
-                    console.error('⚠️ Помилка міграції:', e.message);
+// Запуск додатку
+async function startApp() {
+    // 1. Відновлення даних з GitHub бекапу (перед завантаженням)
+    try {
+        await BackupManager.restore();
+        console.log('📦 Restore завершено');
+    } catch (e) {
+        console.error('⚠️ Restore помилка:', e.message);
+    }
+
+    // 2. Ініціалізація Auth
+    Auth.init();
+
+    // 3. Авто-створення компанії якщо BOT_TOKEN є, але компаній немає
+    if (process.env.BOT_TOKEN) {
+        const companies = Auth.getAllCompanies();
+        if (companies.length === 0) {
+            // Створюємо дефолтну компанію автоматично
+            const defaultPassword = process.env.ADMIN_PASSWORD || 'test1234';
+            const result = Auth.register({
+                companyName: process.env.COMPANY_NAME || 'AutoControl',
+                login: process.env.ADMIN_LOGIN || 'admin',
+                password: defaultPassword,
+                botToken: process.env.BOT_TOKEN
+            });
+            if (result.success) {
+                console.log(`🏢 Авто-створено компанію "${result.company.name}" з BOT_TOKEN`);
+
+                // Авто-міграція старих даних
+                const oldDataFile = path.join(__dirname, 'data.json');
+                if (fs.existsSync(oldDataFile)) {
+                    try {
+                        const oldData = JSON.parse(fs.readFileSync(oldDataFile, 'utf-8'));
+                        const storage = getStorage(result.company.id);
+                        storage.importData(oldData);
+                        fs.renameSync(oldDataFile, oldDataFile + '.migrated');
+                        console.log('📦 Старі дані мігровано автоматично');
+                    } catch (e) {
+                        console.error('⚠️ Помилка міграції:', e.message);
+                    }
                 }
             }
-        }
-    } else {
-        // Якщо компанія є, але без токена — прив'язати
-        const companyWithoutBot = companies.find(c => !c.botToken);
-        if (companyWithoutBot) {
-            Auth.updateBotToken(companyWithoutBot.id, process.env.BOT_TOKEN);
-            console.log(`🔑 BOT_TOKEN прив'язано до "${companyWithoutBot.name}"`);
+        } else {
+            // Якщо компанія є, але без токена — прив'язати
+            const companyWithoutBot = companies.find(c => !c.botToken);
+            if (companyWithoutBot) {
+                Auth.updateBotToken(companyWithoutBot.id, process.env.BOT_TOKEN);
+                console.log(`🔑 BOT_TOKEN прив'язано до "${companyWithoutBot.name}"`);
+            }
         }
     }
+
+    // 4. Автоматичний перерахунок при старті
+    recalculateAll();
+
+    // 5. Запуск ботів для всіх компаній
+    BotManager.initAll();
+
+    // 6. Запуск планувальника бекапу
+    BackupManager.startScheduler();
+
+    // 7. Запуск сервера
+    app.listen(PORT, () => {
+        console.log(`
+╔════════════════════════════════════════════╗
+║       🚗 АвтоКонтроль Server               ║
+╠════════════════════════════════════════════╣
+║  📡 Сервер запущено на порті ${PORT}           ║
+║  🌐 http://localhost:${PORT}                   ║
+║  🔐 Мульти-тенант авторизація активна      ║
+╚════════════════════════════════════════════╝
+        `);
+    });
 }
+
 
 // ========== AUTH ROUTES (без авторизації) ==========
 
@@ -87,20 +127,7 @@ app.get('/css/:file', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'css', req.params.file));
 });
 
-// Перерахунок consumption для всіх компаній (одноразовий при старті + API ендпоінт)
-function recalculateAll() {
-    const companies = Auth.getAllCompanies();
-    let total = 0;
-    companies.forEach(c => {
-        const storage = getStorage(c.id);
-        const updated = storage.recalculateAllConsumption();
-        total += updated;
-        if (updated > 0) console.log(`♻️ Перераховано ${updated} записів для "${c.name}"`);
-    });
-    return total;
-}
-// Автоматичний перерахунок при старті сервера
-recalculateAll();
+
 
 app.get('/api/debug/recalc', (req, res) => {
     const updated = recalculateAll();
@@ -211,7 +238,15 @@ app.use((req, res, next) => {
 });
 
 // Статичні файли (після авторизації!)
-app.use(express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname, '..'), {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.js') || filePath.endsWith('.html') || filePath.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        }
+    }
+}));
 
 // ========== MIGRATION (одноразова міграція старих даних) ==========
 
@@ -755,7 +790,8 @@ app.post('/api/sync', (req, res) => {
 
     res.json({
         success: true,
-        message: 'Дані синхронізовано'
+        message: 'Дані синхронізовано',
+        timestamp: new Date().toISOString()
     });
 });
 
@@ -793,24 +829,7 @@ app.post('/api/settings/bot-token', (req, res) => {
     res.json({ success: true, message: 'Бот запущено!' });
 });
 
-// Запуск ботів для всіх компаній
-BotManager.initAll();
-
-// Запуск планувальника бекапу
-BackupManager.startScheduler();
-
-// Запуск сервера
-app.listen(PORT, () => {
-    console.log(`
-╔════════════════════════════════════════════╗
-║       🚗 АвтоКонтроль Server               ║
-╠════════════════════════════════════════════╣
-║  📡 Сервер запущено на порті ${PORT}           ║
-║  🌐 http://localhost:${PORT}                   ║
-║  🔐 Мульти-тенант авторизація активна      ║
-╚════════════════════════════════════════════╝
-    `);
-});
+startApp();
 
 // ========== Graceful Shutdown ==========
 // Зупиняємо всі боти перед завершенням процесу

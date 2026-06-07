@@ -36,7 +36,18 @@ class CompanyStorage {
             }
             if (fs.existsSync(this.dataFile)) {
                 const content = fs.readFileSync(this.dataFile, 'utf-8');
-                this.data = JSON.parse(content);
+                const parsed = JSON.parse(content);
+                this.data = {
+                    cars: parsed.cars || [],
+                    fuel: parsed.fuel || [],
+                    expenses: parsed.expenses || [],
+                    reminders: parsed.reminders || [],
+                    coupons: parsed.coupons || [],
+                    maintenance: parsed.maintenance || [],
+                    documents: parsed.documents || [],
+                    authorizedDrivers: parsed.authorizedDrivers || [],
+                    settings: parsed.settings || {}
+                };
             } else {
                 this.save();
             }
@@ -53,6 +64,7 @@ class CompanyStorage {
             if (!fs.existsSync(DATA_DIR)) {
                 fs.mkdirSync(DATA_DIR, { recursive: true });
             }
+            this.data.updatedAt = new Date().toISOString();
             fs.writeFileSync(this.dataFile, JSON.stringify(this.data, null, 2), 'utf-8');
 
             // Запланувати бекап після зміни даних (debounced, 5 хв)
@@ -233,6 +245,7 @@ class CompanyStorage {
         // Нормалізація номера через єдину таблицю кирилиця→латиниця
         const normalized = CompanyStorage.normalizePlate(carData.plate || '');
         const plateFormatted = CompanyStorage.formatPlate(normalized);
+        const now = new Date().toISOString();
 
         const car = {
             id: this.generateId(),
@@ -243,7 +256,8 @@ class CompanyStorage {
             plate: plateFormatted,
             color: carData.color || '',
             fuelNorm: parseFloat(carData.fuelNorm) || 0, // л/100км норма
-            createdAt: new Date().toISOString()
+            createdAt: now,
+            updatedAt: now
         };
         this.data.cars.push(car);
         this.save();
@@ -264,6 +278,7 @@ class CompanyStorage {
         }
         if (carData.color !== undefined) car.color = carData.color;
         if (carData.fuelNorm !== undefined) car.fuelNorm = parseFloat(carData.fuelNorm) || 0;
+        car.updatedAt = new Date().toISOString();
 
         this.save();
         return car;
@@ -282,11 +297,12 @@ class CompanyStorage {
         const mileage = parseInt(fuelData.mileage) || 0;
         const liters = parseFloat(fuelData.liters) || 0;
         const pricePerLiter = parseFloat(fuelData.pricePerLiter) || 0;
+        const now = new Date().toISOString();
 
         const fuel = {
             id: this.generateId(),
             carId: fuelData.carId,
-            date: fuelData.date || new Date().toISOString().split('T')[0],
+            date: fuelData.date || now.split('T')[0],
             liters: liters,
             pricePerLiter: pricePerLiter,
             mileage: mileage,
@@ -297,7 +313,8 @@ class CompanyStorage {
             source: fuelData.source || 'telegram',
             driverChatId: fuelData.driverChatId || null,
             driverName: fuelData.driverName || null,
-            createdAt: new Date().toISOString()
+            createdAt: now,
+            updatedAt: now
         };
         this.data.fuel.push(fuel);
 
@@ -305,6 +322,7 @@ class CompanyStorage {
         const car = this.findCarById(fuelData.carId);
         if (car && mileage > (parseInt(car.mileage) || 0)) {
             car.mileage = mileage;
+            car.updatedAt = now;
         }
 
         this.save();
@@ -369,15 +387,17 @@ class CompanyStorage {
     // ========== EXPENSES ==========
 
     addExpense(expenseData) {
+        const now = new Date().toISOString();
         const expense = {
             id: this.generateId(),
             carId: expenseData.carId,
-            date: expenseData.date || new Date().toISOString().split('T')[0],
+            date: expenseData.date || now.split('T')[0],
             category: expenseData.category,
             amount: expenseData.amount,
             description: expenseData.description || '',
             source: expenseData.source || 'telegram',
-            createdAt: new Date().toISOString()
+            createdAt: now,
+            updatedAt: now
         };
         this.data.expenses.push(expense);
         this.save();
@@ -391,15 +411,17 @@ class CompanyStorage {
     }
 
     addCoupon(couponData) {
+        const now = new Date().toISOString();
         const coupon = {
             id: this.generateId(),
-            date: couponData.date || new Date().toISOString().split('T')[0],
+            date: couponData.date || now.split('T')[0],
             liters: parseFloat(couponData.liters),
             pricePerLiter: parseFloat(couponData.pricePerLiter) || 0,
             supplier: couponData.supplier || '',
             note: couponData.note || '',
             source: couponData.source || 'telegram',
-            createdAt: new Date().toISOString()
+            createdAt: now,
+            updatedAt: now
         };
         if (!this.data.coupons) this.data.coupons = [];
         this.data.coupons.push(coupon);
@@ -430,15 +452,17 @@ class CompanyStorage {
 
     addMaintenance(data) {
         if (!this.data.maintenance) this.data.maintenance = [];
+        const now = new Date().toISOString();
         const record = {
             id: this.generateId(),
             carId: data.carId,
             type: data.type || 'maintenance', // oil, tires, brakes, filter, battery, other
-            date: data.date || new Date().toISOString().split('T')[0],
+            date: data.date || now.split('T')[0],
             mileage: parseInt(data.mileage) || 0,
             cost: parseFloat(data.cost) || 0,
             description: data.description || '',
-            createdAt: new Date().toISOString()
+            createdAt: now,
+            updatedAt: now
         };
         this.data.maintenance.push(record);
         this.save();
@@ -468,6 +492,7 @@ class CompanyStorage {
 
     addDocument(data) {
         if (!this.data.documents) this.data.documents = [];
+        const now = new Date().toISOString();
         const doc = {
             id: this.generateId(),
             carId: data.carId || null,
@@ -476,7 +501,8 @@ class CompanyStorage {
             issueDate: data.issueDate || '',
             expiryDate: data.expiryDate || '',
             note: data.note || '',
-            createdAt: new Date().toISOString()
+            createdAt: now,
+            updatedAt: now
         };
         this.data.documents.push(doc);
         this.save();
@@ -494,6 +520,7 @@ class CompanyStorage {
         if (data.issueDate !== undefined) doc.issueDate = data.issueDate;
         if (data.expiryDate !== undefined) doc.expiryDate = data.expiryDate;
         if (data.note !== undefined) doc.note = data.note;
+        doc.updatedAt = new Date().toISOString();
 
         this.save();
         return doc;
@@ -530,14 +557,59 @@ class CompanyStorage {
     }
 
     importData(newData) {
-        if (newData.cars) this.data.cars = newData.cars;
-        if (newData.fuel) this.data.fuel = newData.fuel;
-        if (newData.expenses) this.data.expenses = newData.expenses;
-        if (newData.reminders) this.data.reminders = newData.reminders;
-        if (newData.coupons) this.data.coupons = newData.coupons;
-        if (newData.maintenance) this.data.maintenance = newData.maintenance;
-        if (newData.documents) this.data.documents = newData.documents;
-        if (newData.settings) this.data.settings = newData.settings;
+        const lastSyncedAt = newData.lastSyncedAt ? new Date(newData.lastSyncedAt).getTime() : 0;
+        const collections = ['cars', 'fuel', 'expenses', 'reminders', 'coupons', 'maintenance', 'documents'];
+
+        collections.forEach(key => {
+            if (!newData[key]) return;
+
+            const clientItems = newData[key];
+            const serverItems = this.data[key] || [];
+
+            const mergedItems = [];
+            const clientItemMap = new Map(clientItems.map(item => [item.id, item]));
+
+            // 1. Обробляємо існуючі записи на сервері
+            serverItems.forEach(serverItem => {
+                const clientItem = clientItemMap.get(serverItem.id);
+
+                if (clientItem) {
+                    // Запис є і там, і там — порівнюємо updatedAt/createdAt
+                    const clientTime = new Date(clientItem.updatedAt || clientItem.createdAt || 0).getTime();
+                    const serverTime = new Date(serverItem.updatedAt || serverItem.createdAt || 0).getTime();
+
+                    if (clientTime >= serverTime) {
+                        mergedItems.push(clientItem);
+                    } else {
+                        mergedItems.push(serverItem);
+                    }
+                    clientItemMap.delete(serverItem.id);
+                } else {
+                    // Запису немає в клієнтському наборі
+                    // Перевіряємо: чи був він створений після останньої синхронізації клієнта?
+                    const createdTime = new Date(serverItem.createdAt || 0).getTime();
+                    if (createdTime > lastSyncedAt) {
+                        // Запис створено на сервері (наприклад, ботом) після останнього злиття. Зберігаємо!
+                        mergedItems.push(serverItem);
+                    } else {
+                        // Клієнт вже бачив цей запис, але в його наборі його немає — значить користувач видалив його в UI
+                        console.log(`🗑️ [${this.companyId}] Синхронізація: видалено запис ${key}:${serverItem.id}`);
+                    }
+                }
+            });
+
+            // 2. Додаємо нові записи з клієнта
+            clientItemMap.forEach(clientItem => {
+                mergedItems.push(clientItem);
+            });
+
+            this.data[key] = mergedItems;
+        });
+
+        if (newData.settings) {
+            this.data.settings = { ...(this.data.settings || {}), ...newData.settings };
+        }
+
         // Дедуплікація після імпорту всіх даних
         this.deduplicateCars();
         // Оновлюємо пробіг авто з записів заправок (веб не оновлює car.mileage)
@@ -559,6 +631,7 @@ class CompanyStorage {
 
             if (maxMileage > currentMileage) {
                 car.mileage = maxMileage;
+                car.updatedAt = new Date().toISOString();
             }
         }
     }

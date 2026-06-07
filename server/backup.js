@@ -136,7 +136,7 @@ class BackupManager {
         try {
             const result = await this._apiRequest(
                 'GET',
-                `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}?ref=${BRANCH}`
+                `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}?ref=${BACKUP_BRANCH}`
             );
             if (result.content) {
                 return Buffer.from(result.content, 'base64').toString('utf-8');
@@ -228,8 +228,28 @@ class BackupManager {
 
                 if (content) {
                     const localPath = path.join(DATA_DIR, file.name);
-                    fs.writeFileSync(localPath, content, 'utf-8');
-                    restoredCount++;
+                    let shouldWrite = true;
+
+                    if (fs.existsSync(localPath)) {
+                        try {
+                            const localData = JSON.parse(fs.readFileSync(localPath, 'utf-8'));
+                            const remoteData = JSON.parse(content);
+                            const localTime = localData && localData.updatedAt ? new Date(localData.updatedAt).getTime() : 0;
+                            const remoteTime = remoteData && remoteData.updatedAt ? new Date(remoteData.updatedAt).getTime() : 0;
+
+                            if (localTime > remoteTime) {
+                                console.log(`📦 Пропущено відновлення ${file.name}: локальні дані новіші (${localData.updatedAt} > ${remoteData.updatedAt || '—'})`);
+                                shouldWrite = false;
+                            }
+                        } catch (e) {
+                            // Якщо помилка парсингу — перезаписуємо локальний файл
+                        }
+                    }
+
+                    if (shouldWrite) {
+                        fs.writeFileSync(localPath, content, 'utf-8');
+                        restoredCount++;
+                    }
                 }
             }
 

@@ -14,6 +14,10 @@ class BotManager {
      * Запуск ботів для всіх компаній при старті сервера
      */
     static initAll() {
+        if (process.env.DISABLE_BOT === 'true') {
+            console.log('🤖 Telegram боти вимкнено через DISABLE_BOT=true');
+            return;
+        }
         const companies = Auth.getAllCompanies();
         let started = 0;
         const usedTokens = new Set(); // Запобігаємо запуску кількох ботів з однаковим токеном
@@ -37,6 +41,9 @@ class BotManager {
      * Запуск бота для компанії
      */
     static startBot(companyId, botToken) {
+        if (process.env.DISABLE_BOT === 'true') {
+            return null;
+        }
         // Зупиняємо старий бот якщо є
         this.stopBot(companyId);
 

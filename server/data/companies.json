@@ -6,5 +6,61 @@
     "passwordHash": "faf4ad767a001cb7804d82dc390c5c1d:4ff72c907c41ad944e4abd38883713f02c5f524fe4097390a85d554d53b297bfc9b4342a72138a4eb0e48a95e1c4a3f515c38653c8fd58ae6f764595a03fa5e5",
     "botToken": "8348491008:AAG8bYcGgn3ASCaw1U65ji6-GzjinDwbueI",
     "createdAt": "2026-03-04T10:03:44.260Z"
+  },
+  {
+    "id": "a47f7ede-0cfd-42bf-b8d2-bd89dabe1ee6",
+    "name": "TestCompany",
+    "login": "admin",
+    "passwordHash": "eaa29e12833af6c622c60b1bf3c3d6a3:97d2b1dd0d386f38f8f3884367a9b03fc094c9c794fa8453bec66b205c594406d1ba1530f4ec72139ecc47f88452fc532272ebad04d548d1e48d3ae7832d71d4",
+    "botToken": "8348491008:AAG8bYcGgn3ASCaw1U65ji6-GzjinDwbueI",
+    "createdAt": "2026-03-20T08:02:16.481Z"
+  },
+  {
+    "id": "4f22c998-e6b3-4b73-b67e-263648bd8b76",
+    "name": "Test Company",
+    "login": "testadmin",
+    "passwordHash": "bc1cd38bd3cd1aea93e4314f3a2b729e:7098d032e2648c180411e828abca523225f9421429b2555940a81e4a30a1154d3a744c00a2666503415e5eac39f57bce30be981dd79bdad5055eb1c038e59a9c",
+    "botToken": "8348491008:AAG8bYcGgn3ASCaw1U65ji6-GzjinDwbueI",
+    "createdAt": "2026-06-05T08:15:45.839Z"
+  },
+  {
+    "id": "9a3c6fe7-05c2-4939-a719-a0ec22013edd",
+    "name": "SyncTestCompany",
+    "login": "synctest",
+    "passwordHash": "45dbccf4dedff66ae61e2988f2274254:c514429c8e8d406c62928742a6fdf5d40e05d3d155a4fe9bced160d9b22b38fb10ba5a855aa927e241a3f77a193c2e0460248b4c875d7fa0d8803377205e84ae",
+    "botToken": "8348491008:AAG8bYcGgn3ASCaw1U65ji6-GzjinDwbueI",
+    "createdAt": "2026-06-05T08:29:09.892Z"
+  },
+  {
+    "id": "13af98e5-ae91-40fc-9f8c-6f7a0ed64493",
+    "name": "Test Company",
+    "login": "testlogin@gmail.com",
+    "passwordHash": "a4f4defa4e1b97a23da9395e1d9980b0:2bed0b7c80af53d1468bbf913f1e5202b437318182564b403416e7c98711f5690eab93ccac7129b35743cbd05119f94abf79dfb388d289ab0acb8db38648bccf",
+    "botToken": "8348491008:AAG8bYcGgn3ASCaw1U65ji6-GzjinDwbueI",
+    "createdAt": "2026-06-06T06:03:55.912Z"
+  },
+  {
+    "id": "2bf0b568-fc4a-4561-89ca-b6a57b146e61",
+    "name": "Sync Test Company",
+    "login": "sync_test_admin",
+    "passwordHash": "fcc2453a8a0ab979e6c5a33822eedd11:d3852798792f4cc7539996a0f8cfdc544582baf2c9838615c9d7a521532803396544d1b6318a361aadff54cd8be8541c375f62e0d80ca9134098187c70b0f3f3",
+    "botToken": "8348491008:AAG8bYcGgn3ASCaw1U65ji6-GzjinDwbueI",
+    "createdAt": "2026-06-06T06:30:23.998Z"
+  },
+  {
+    "id": "0ae03b0d-6154-4c71-ad32-e24a079341d8",
+    "name": "User Test Company",
+    "login": "usertestadmin",
+    "passwordHash": "2b934fd20be0d85dbfdb6c662ee32893:88c3309ad45d37e062737aa92ad4afe6be2302d2588cec2a183eeee2ebd5cd29a111bf1529db047a7731031c87f9f9406684045d0a50753eb25b0a32b4685d9b",
+    "botToken": "8348491008:AAG8bYcGgn3ASCaw1U65ji6-GzjinDwbueI",
+    "createdAt": "2026-06-07T08:37:40.094Z"
+  },
+  {
+    "id": "473eac09-adf5-41a4-877f-b590a1c328b2",
+    "name": "Sync Test V3",
+    "login": "synctestv3",
+    "passwordHash": "e80d7edd086179422d9aa92820e4132c:ae4cd02bcb7f4f2dfa347a507962635b7db1fa8ef6cae1cb3f99e6cae9c2362873f8201d2064cec6cc4ac7346b846e45859524cc54e137e1a837217e23f47cf5",
+    "botToken": "8348491008:AAG8bYcGgn3ASCaw1U65ji6-GzjinDwbueI",
+    "createdAt": "2026-06-07T08:53:14.641Z"
   }
 ]

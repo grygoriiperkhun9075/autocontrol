@@ -417,11 +417,131 @@ AA 1234 BB
             confirmText += `\n\n🎫 Залишок талонів: *${balance.toFixed(1)} л*`;
         }
 
+        // Пошук найближчого активного нагадування для авто
+        try {
+            const nearestReminder = this.getNearestReminder(pending.carId, pending.mileage);
+            if (nearestReminder) {
+                const REMINDER_TYPES = {
+                    'maintenance': { icon: '🛠️', label: 'Технічне обслуговування' },
+                    'insurance': { icon: '📋', label: 'Страховка' },
+                    'inspection': { icon: '🔍', label: 'Техогляд' },
+                    'oil': { icon: '🛢️', label: 'Заміна масла' },
+                    'tires': { icon: '🛞', label: 'Заміна шин' },
+                    'license': { icon: '🪪', label: 'Посвідчення водія' },
+                    'permit': { icon: '📄', label: 'Ліцензія перевізника' },
+                    'other': { icon: '📦', label: 'Інше' }
+                };
+                const typeInfo = REMINDER_TYPES[nearestReminder.type] || { icon: '📦', label: 'Нагадування' };
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                let isOverdue = false;
+                let isMileageExceeded = false;
+
+                let dateStr = '';
+                if (nearestReminder.date) {
+                    const rDate = new Date(nearestReminder.date);
+                    rDate.setHours(0, 0, 0, 0);
+                    if (rDate < today) isOverdue = true;
+
+                    const day = String(rDate.getDate()).padStart(2, '0');
+                    const month = String(rDate.getMonth() + 1).padStart(2, '0');
+                    const year = rDate.getFullYear();
+                    dateStr = `${day}.${month}.${year}`;
+                }
+
+                let mileageStr = '';
+                if (nearestReminder.mileage) {
+                    const mileageVal = parseInt(nearestReminder.mileage);
+                    const currentMileage = parseInt(pending.mileage);
+                    if (currentMileage && currentMileage >= mileageVal) {
+                        isMileageExceeded = true;
+                        const diff = currentMileage - mileageVal;
+                        mileageStr = `${mileageVal.toLocaleString()} км (перевищено на ${diff.toLocaleString()} км)`;
+                    } else if (currentMileage) {
+                        const diff = mileageVal - currentMileage;
+                        mileageStr = `${mileageVal.toLocaleString()} км (залишилось ${diff.toLocaleString()} км)`;
+                    } else {
+                        mileageStr = `${mileageVal.toLocaleString()} км`;
+                    }
+                }
+
+                const isUrgent = isOverdue || isMileageExceeded;
+                confirmText += `\n\n${isUrgent ? '⚠️ *Увага! Нагадування прострочено:*' : '📅 *Найближче нагадування:*'}\n`;
+                confirmText += `${typeInfo.icon} *${typeInfo.label}*\n`;
+                if (dateStr) {
+                    confirmText += `📅 Дата: *${dateStr}*\n`;
+                }
+                if (mileageStr) {
+                    confirmText += `📏 Пробіг: *${mileageStr}*\n`;
+                }
+                if (nearestReminder.note) {
+                    confirmText += `📝 Примітка: _${nearestReminder.note}_`;
+                }
+            }
+        } catch (err) {
+            console.error('Помилка пошуку нагадування:', err);
+        }
+
         this.bot.editMessageText(confirmText, {
             chat_id: chatId,
             message_id: query.message.message_id,
             parse_mode: 'Markdown'
         });
+    }
+
+    /**
+     * Пошук найближчого активного нагадування для авто
+     */
+    getNearestReminder(carId, currentMileage) {
+        const reminders = this.storage.data.reminders || [];
+        const active = reminders.filter(r => r.carId === carId && !r.completed);
+        if (active.length === 0) return null;
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Перевіряємо чи нагадування прострочене чи перевищене
+        const isUrgent = (r) => {
+            if (r.date) {
+                const rDate = new Date(r.date);
+                rDate.setHours(0, 0, 0, 0);
+                if (rDate < today) return true;
+            }
+            if (r.mileage && currentMileage) {
+                if (currentMileage >= r.mileage) return true;
+            }
+            return false;
+        };
+
+        // Сортуємо активні нагадування за терміновістю
+        active.sort((a, b) => {
+            const urgentA = isUrgent(a);
+            const urgentB = isUrgent(b);
+
+            // 1. Термінові спочатку
+            if (urgentA && !urgentB) return -1;
+            if (!urgentA && urgentB) return 1;
+
+            // 2. Якщо обидва термінові або обидва ні:
+            // Сортуємо за датою (від найдавнішої/найближчої)
+            if (a.date && b.date) {
+                return new Date(a.date) - new Date(b.date);
+            }
+            if (a.date) return -1;
+            if (b.date) return 1;
+
+            // 3. За пробігом (від найменшого)
+            if (a.mileage && b.mileage) {
+                return a.mileage - b.mileage;
+            }
+            if (a.mileage) return -1;
+            if (b.mileage) return 1;
+
+            return 0;
+        });
+
+        return active[0];
     }
 
     /**

@@ -2582,6 +2582,8 @@
       "createdAt": "2026-03-12T07:50:07.025Z"
     }
   ],
+  "maintenance": [],
+  "documents": [],
   "authorizedDrivers": [
     {
       "chatId": 1000125723,
@@ -2644,9 +2646,8 @@
       "addedAt": "2026-03-03T05:17:02.659Z"
     }
   ],
-  "maintenance": [],
-  "documents": [],
   "settings": {
     "fuelCardPriority": true
-  }
+  },
+  "updatedAt": "2026-06-07T09:04:03.482Z"
 }
