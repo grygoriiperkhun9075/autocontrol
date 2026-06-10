@@ -45,6 +45,29 @@ const Storage = {
         return parseInt(localStorage.getItem('autocontrol_local_version') || '0', 10);
     },
 
+    getDeletedIds() {
+        try {
+            const data = localStorage.getItem('autocontrol_deleted_ids');
+            return data ? JSON.parse(data) : [];
+        } catch (e) {
+            return [];
+        }
+    },
+
+    addDeletedId(id) {
+        const ids = this.getDeletedIds();
+        if (!ids.includes(id)) {
+            ids.push(id);
+            localStorage.setItem('autocontrol_deleted_ids', JSON.stringify(ids));
+        }
+    },
+
+    clearDeletedIds(idsToClear) {
+        const ids = this.getDeletedIds();
+        const filtered = ids.filter(id => !idsToClear.includes(id));
+        localStorage.setItem('autocontrol_deleted_ids', JSON.stringify(filtered));
+    },
+
     /**
      * Генерація унікального ID
      */
@@ -117,6 +140,7 @@ const Storage = {
         const items = this.get(key);
         const filtered = items.filter(item => item.id !== id);
         this.set(key, filtered);
+        this.addDeletedId(id);
         this.incrementLocalVersion();
         this.syncToServer(); // Синхронізація з сервером
         return filtered.length < items.length;
@@ -150,22 +174,63 @@ const Storage = {
             coupons: this.get(this.KEYS.COUPONS),
             maintenance: this.get(this.KEYS.MAINTENANCE),
             documents: this.get(this.KEYS.DOCUMENTS),
+            deletedIds: this.getDeletedIds(),
             lastSyncedAt: localStorage.getItem('autocontrol_last_synced_at') || '1970-01-01T00:00:00.000Z',
             exportedAt: this.getNowISO()
         };
     },
 
-    /**
-     * Імпорт даних
-     */
     importData(data) {
-        if (data.cars) this.set(this.KEYS.CARS, data.cars);
-        if (data.fuel) this.set(this.KEYS.FUEL, data.fuel);
-        if (data.expenses) this.set(this.KEYS.EXPENSES, data.expenses);
-        if (data.reminders) this.set(this.KEYS.REMINDERS, data.reminders);
-        if (data.coupons) this.set(this.KEYS.COUPONS, data.coupons);
-        if (data.maintenance) this.set(this.KEYS.MAINTENANCE, data.maintenance);
-        if (data.documents) this.set(this.KEYS.DOCUMENTS, data.documents);
+        const lastSyncedAtStr = localStorage.getItem('autocontrol_last_synced_at') || '1970-01-01T00:00:00.000Z';
+        const lastSyncedAt = new Date(lastSyncedAtStr).getTime();
+
+        const collections = ['cars', 'fuel', 'expenses', 'reminders', 'coupons', 'maintenance', 'documents'];
+
+        collections.forEach(type => {
+            const key = this.KEYS[type.toUpperCase()];
+            if (!data[type]) return;
+
+            const localItems = this.get(key);
+            const serverItems = data[type];
+
+            const mergedItems = [];
+            const localItemMap = new Map(localItems.map(item => [item.id, item]));
+
+            // 1. Обробляємо записи з сервера
+            serverItems.forEach(serverItem => {
+                const localItem = localItemMap.get(serverItem.id);
+                if (localItem) {
+                    const localTime = new Date(localItem.updatedAt || localItem.createdAt || 0).getTime();
+                    const serverTime = new Date(serverItem.updatedAt || serverItem.createdAt || 0).getTime();
+
+                    if (localTime >= serverTime) {
+                        mergedItems.push(localItem);
+                    } else {
+                        mergedItems.push(serverItem);
+                    }
+                    localItemMap.delete(serverItem.id);
+                } else {
+                    // Запис є на сервері, але немає локально
+                    mergedItems.push(serverItem);
+                }
+            });
+
+            // 2. Обробляємо решту локальних записів (яких немає на сервері)
+            localItemMap.forEach(localItem => {
+                const localTime = new Date(localItem.updatedAt || localItem.createdAt || 0).getTime();
+                // Якщо запис був створений/оновлений після останньої успішної синхронізації,
+                // це новий локальний запис, який ще не відправлено. Зберігаємо його.
+                if (localTime > lastSyncedAt) {
+                    mergedItems.push(localItem);
+                } else {
+                    // Якщо запис уже був синхронізований раніше, але зараз його немає на сервері —
+                    // це означає, що його видалили на сервері. Видаляємо локально.
+                    console.log(`🗑️ Client sync: item ${type}:${localItem.id} was deleted on the server, removing locally`);
+                }
+            });
+
+            this.set(key, mergedItems);
+        });
     },
 
     /**
@@ -256,16 +321,22 @@ const Storage = {
         this.isSyncingToServer = true;
 
         const startVersion = this.getLocalVersion();
+        const payload = this.getAllData();
+        const sentDeletedIds = payload.deletedIds || [];
 
         try {
             const response = await fetch(this.API_URL + '/sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(this.getAllData())
+                body: JSON.stringify(payload)
             });
             if (response.ok) {
                 const result = await response.json();
                 console.log('✅ Дані відправлено на сервер');
+
+                if (sentDeletedIds.length > 0) {
+                    this.clearDeletedIds(sentDeletedIds);
+                }
 
                 if (result.timestamp) {
                     this.updateServerTimeOffset(result.timestamp);

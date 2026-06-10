@@ -557,6 +557,7 @@ class CompanyStorage {
     }
 
     importData(newData) {
+        const deletedIds = new Set(newData.deletedIds || []);
         const lastSyncedAt = newData.lastSyncedAt ? new Date(newData.lastSyncedAt).getTime() : 0;
         const collections = ['cars', 'fuel', 'expenses', 'reminders', 'coupons', 'maintenance', 'documents'];
 
@@ -586,21 +587,26 @@ class CompanyStorage {
                     clientItemMap.delete(serverItem.id);
                 } else {
                     // Запису немає в клієнтському наборі
-                    // Перевіряємо: чи був він створений після останньої синхронізації клієнта?
-                    const createdTime = new Date(serverItem.createdAt || 0).getTime();
-                    if (createdTime > lastSyncedAt) {
-                        // Запис створено на сервері (наприклад, ботом) після останнього злиття. Зберігаємо!
-                        mergedItems.push(serverItem);
-                    } else {
-                        // Клієнт вже бачив цей запис, але в його наборі його немає — значить користувач видалив його в UI
+                    if (deletedIds.has(serverItem.id)) {
                         console.log(`🗑️ [${this.companyId}] Синхронізація: видалено запис ${key}:${serverItem.id}`);
+                        // Не додаємо його в mergedItems -> видаляємо
+                    } else {
+                        // Якщо ID немає в deletedIds, зберігаємо запис (клієнт просто ще не завантажив або втратив через інший пристрій)
+                        mergedItems.push(serverItem);
                     }
                 }
             });
 
             // 2. Додаємо нові записи з клієнта
             clientItemMap.forEach(clientItem => {
-                mergedItems.push(clientItem);
+                if (deletedIds.has(clientItem.id)) return;
+
+                const clientTime = new Date(clientItem.updatedAt || clientItem.createdAt || 0).getTime();
+                if (clientTime > lastSyncedAt) {
+                    mergedItems.push(clientItem);
+                } else {
+                    console.log(`🗑️ [${this.companyId}] Синхронізація: відкинуто воскреслий запис ${key}:${clientItem.id} (видалений на сервері)`);
+                }
             });
 
             this.data[key] = mergedItems;
