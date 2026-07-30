@@ -9,6 +9,7 @@ const CouponPDF = require('./coupon-pdf');
 
 class AutoControlBot {
     constructor(token, storage, okkoScraper = null) {
+        this.token = token;
         this.storage = storage;
         this.pendingFuel = new Map(); // chatId -> pending fuel data
         this.okko = okkoScraper;
@@ -27,6 +28,53 @@ class AutoControlBot {
             }
         });
 
+        // Перехоплюємо реєстрацію слухачів подій для динамічного вибору компанії
+        const originalOnText = this.bot.onText.bind(this.bot);
+        this.bot.onText = (regexp, callback) => {
+            originalOnText(regexp, (msg, match) => {
+                const chatId = msg.chat?.id;
+                if (!chatId) return callback.call(this, msg, match);
+
+                if (this.isSelectionRequired(chatId, msg.text)) {
+                    this.promptCompanySelection(chatId);
+                    return;
+                }
+
+                const context = Object.create(this);
+                context.storage = this.getStorageForChat(chatId);
+                callback.call(context, msg, match);
+            });
+        };
+
+        const originalOn = this.bot.on.bind(this.bot);
+        this.bot.on = (event, callback) => {
+            originalOn(event, (...args) => {
+                const msg = args[0]; // повідомлення, фото, callback_query тощо
+                let chatId = null;
+                if (msg) {
+                    if (msg.chat) chatId = msg.chat.id;
+                    else if (msg.message && msg.message.chat) chatId = msg.message.chat.id;
+                }
+                if (!chatId) return callback.call(this, ...args);
+
+                if (event === 'callback_query') {
+                    const context = Object.create(this);
+                    context.storage = this.getStorageForChat(chatId);
+                    return callback.call(context, ...args);
+                }
+
+                const text = msg.text || msg.caption || '';
+                if (this.isSelectionRequired(chatId, text)) {
+                    this.promptCompanySelection(chatId);
+                    return;
+                }
+
+                const context = Object.create(this);
+                context.storage = this.getStorageForChat(chatId);
+                callback.call(context, ...args);
+            });
+        };
+
         // Обробка помилок polling (409 Conflict — два екземпляри бота)
         this.bot.on('polling_error', (error) => {
             if (error.code === 'ETELEGRAM' && error.message.includes('409')) {
@@ -34,6 +82,15 @@ class AutoControlBot {
             } else {
                 console.error('❌ Bot polling error:', error.message);
             }
+        });
+
+        // Отримуємо ім'я користувача бота
+        this.username = null;
+        this.bot.getMe().then(me => {
+            this.username = me.username;
+            console.log(`🤖 Telegram бот @${me.username} готовий до роботи!`);
+        }).catch(err => {
+            console.error('❌ Не вдалося отримати ім\'я бота:', err.message);
         });
 
         this.setupHandlers();
@@ -78,8 +135,22 @@ class AutoControlBot {
         if (!this.bot) return;
 
         // Команда /start
-        this.bot.onText(/\/start/, (msg) => {
+        this.bot.onText(/\/start(?:\s+(.+))?/, (msg, match) => {
             const chatId = msg.chat.id;
+            const payload = match[1];
+
+            if (payload) {
+                const Auth = require('./auth');
+                const company = Auth.getCompany(payload);
+                if (company && company.botToken === this.token) {
+                    this.saveSession(chatId, payload);
+                    this.storage = this.getStorageForChat(chatId);
+                    
+                    this.bot.sendMessage(chatId, `🏢 *Активовано компанію:* ${company.name}\n\nТепер ви працюєте з цим кабінетом.`, { parse_mode: 'Markdown' });
+                    return;
+                }
+            }
+
             console.log(`👤 /start від ${msg.from?.first_name || 'Unknown'} (Chat ID: ${chatId})`);
             this.bot.sendMessage(chatId, `
 🚗 *Вітаю в АвтоКонтроль!*
@@ -105,7 +176,32 @@ AA 1234 BB
 /stats - Статистика
 /talons - Купівля талонів
 /coupon - Отримати PDF-талон зі штрих-кодом
+/select - Оберіть компанію (для тестів)
             `.trim(), { parse_mode: 'Markdown' });
+        });
+
+        // Команда /select (вибір компанії для тестів)
+        this.bot.onText(/\/select/, (msg) => {
+            const chatId = msg.chat.id;
+            const Auth = require('./auth');
+            const companies = Auth.getAllCompanies().filter(c => c.botToken === this.token);
+
+            if (companies.length <= 1) {
+                this.bot.sendMessage(chatId, 'ℹ️ Для цього бота налаштована лише одна компанія.');
+                return;
+            }
+
+            const keyboard = companies.map(c => [{
+                text: c.name,
+                callback_data: `select_co_${c.id}`
+            }]);
+
+            this.bot.sendMessage(chatId, '🏢 *Оберіть компанію для роботи з ботом:*', {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: keyboard
+                }
+            });
         });
 
         // Команда /help
@@ -242,17 +338,32 @@ AA 1234 BB
             }
         });
 
-        // Обробка натискань на кнопки (спосіб оплати / талони)
+        // Обробка натискань на кнопки (спосіб оплати / талони / вибір компанії)
         this.bot.on('callback_query', (query) => {
-            if (query.data.startsWith('coupon_')) {
+            const chatId = query.message.chat.id;
+            if (query.data.startsWith('select_co_')) {
+                const companyId = query.data.replace('select_co_', '');
+                this.saveSession(chatId, companyId);
+                
+                const Auth = require('./auth');
+                const company = Auth.getCompany(companyId);
+                const companyName = company ? company.name : 'невідому компанію';
+                
+                this.bot.answerCallbackQuery(query.id);
+                this.bot.editMessageText(`✅ *Активовано компанію:* ${companyName}\n\nТепер ви працюєте з цим кабінетом.`, {
+                    chat_id: chatId,
+                    message_id: query.message.message_id,
+                    parse_mode: 'Markdown'
+                });
+            } else if (query.data.startsWith('coupon_')) {
                 // Перевіряємо авторизацію при натисканні кнопки
-                if (!this.storage.isDriverAuthorized(query.message.chat.id)) {
+                if (!this.storage.isDriverAuthorized(chatId)) {
                     this.bot.answerCallbackQuery(query.id, { text: '🚫 У вас немає доступу до талонів', show_alert: true });
                     return;
                 }
                 const liters = parseInt(query.data.replace('coupon_', ''));
                 this.bot.answerCallbackQuery(query.id);
-                this.generateAndSendCouponPDF(query.message.chat.id, liters, query.message.message_id);
+                this.generateAndSendCouponPDF(chatId, liters, query.message.message_id);
             } else {
                 this.handlePaymentCallback(query);
             }
@@ -988,6 +1099,145 @@ AA 1234 BB
         // Використовуємо handleCouponCommand
         this.handleCouponCommand(msg, `${liters} ${pricePerLiter}`);
         return true;
+    }
+
+    /**
+     * Завантажити активні сесії водіїв (вибір компанії)
+     */
+    loadSessions() {
+        const fs = require('fs');
+        const path = require('path');
+        const file = path.join(__dirname, 'data', 'bot_sessions.json');
+        try {
+            if (fs.existsSync(file)) {
+                return JSON.parse(fs.readFileSync(file, 'utf-8'));
+            }
+        } catch (e) {
+            console.error('❌ [Бот] Помилка завантаження сесій:', e.message);
+        }
+        return {};
+    }
+
+    /**
+     * Зберегти обрану компанію для водія
+     */
+    saveSession(chatId, companyId) {
+        const fs = require('fs');
+        const path = require('path');
+        const file = path.join(__dirname, 'data', 'bot_sessions.json');
+        try {
+            // Переконуємось, що папка data існує
+            const dir = path.dirname(file);
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+            }
+            const sessions = this.loadSessions();
+            sessions[chatId] = companyId;
+            fs.writeFileSync(file, JSON.stringify(sessions, null, 2), 'utf-8');
+            console.log(`💾 [Бот] Збережено сесію для водія ${chatId} -> компанія ${companyId}`);
+        } catch (e) {
+            console.error('❌ [Бот] Помилка збереження сесії:', e.message);
+        }
+    }
+
+    /**
+     * Динамічне отримання сховища компанії для конкретного водія за його chatId.
+     * Запобігає проблемам спільного використання одного токена бота різними компаніями.
+     */
+    getStorageForChat(chatId) {
+        const Auth = require('./auth');
+        const { getStorage } = require('./storage');
+        
+        try {
+            // 1. Перевіряємо, чи є збережена активна сесія (ручний вибір або старт-лінк)
+            const sessions = this.loadSessions();
+            const activeCompanyId = sessions[chatId];
+            if (activeCompanyId) {
+                const company = Auth.getCompany(activeCompanyId);
+                if (company && company.botToken === this.token) {
+                    return getStorage(activeCompanyId);
+                }
+            }
+
+            const companies = Auth.getAllCompanies();
+            // 2. Шукаємо компанію, де водій зареєстрований явно
+            for (const company of companies) {
+                if (company.botToken === this.token) {
+                    const companyStorage = getStorage(company.id);
+                    const drivers = companyStorage.getDrivers();
+                    if (drivers.some(d => String(d.chatId) === String(chatId))) {
+                        console.log(`🤖 [Бот] Знайдено компанію ${company.name} (${company.id}) для водія ${chatId}`);
+                        return companyStorage;
+                    }
+                }
+            }
+            // 3. Шукаємо компанію, де список водіїв порожній (дозволено всім)
+            for (const company of companies) {
+                if (company.botToken === this.token) {
+                    const companyStorage = getStorage(company.id);
+                    const drivers = companyStorage.getDrivers();
+                    if (drivers.length === 0) {
+                        console.log(`🤖 [Бот] Використовуємо компанію ${company.name} (${company.id}) для ${chatId} (список водіїв порожній)`);
+                        return companyStorage;
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('❌ [Бот] Помилка пошуку компанії для водія:', err.message);
+        }
+        
+        // Fallback до сховища за замовчуванням
+        return this.storage;
+    }
+
+    /**
+     * Перевірити, чи обов'язковий вибір компанії для цього користувача
+     */
+    isSelectionRequired(chatId, text) {
+        // Якщо це команда вибору компанії або старту з параметром, то вибір не блокується
+        if (text && (text.startsWith('/select') || text.startsWith('/start'))) {
+            return false;
+        }
+
+        const Auth = require('./auth');
+        const companies = Auth.getAllCompanies().filter(c => c.botToken === this.token);
+
+        // Якщо тільки одна компанія використовує цей токен, вибір не потрібен
+        if (companies.length <= 1) {
+            return false;
+        }
+
+        // Якщо токен спільний, перевіряємо наявність активної сесії
+        const sessions = this.loadSessions();
+        if (sessions[chatId]) {
+            // Переконуємось, що сесія веде на дійсну компанію з цим токеном
+            const company = Auth.getCompany(sessions[chatId]);
+            if (company && company.botToken === this.token) {
+                return false; // Сесія є і вона валідна
+            }
+        }
+
+        return true; // Сесії немає, потрібен вибір компанії
+    }
+
+    /**
+     * Надіслати користувачеві вибір компанії
+     */
+    promptCompanySelection(chatId) {
+        const Auth = require('./auth');
+        const companies = Auth.getAllCompanies().filter(c => c.botToken === this.token);
+
+        const keyboard = companies.map(c => [{
+            text: c.name,
+            callback_data: `select_co_${c.id}`
+        }]);
+
+        this.bot.sendMessage(chatId, '🏢 *Для роботи з ботом необхідно обрати ваш кабінет (компанію):*\n\nБудь ласка, оберіть компанію зі списку нижче:', {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: keyboard
+            }
+        });
     }
 }
 

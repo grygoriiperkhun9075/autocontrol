@@ -14,6 +14,7 @@ const Drivers = {
         this.renderDriversTable();
         this.renderUsageTable();
         this.renderStats();
+        this.updateBotLink();
     },
 
     /**
@@ -142,6 +143,29 @@ const Drivers = {
             this.renderSection();
         } catch (e) {
             console.error('Remove driver error:', e);
+        }
+    },
+
+    /**
+     * Оновлення посилання на Telegram-бота з компанією в параметрах
+     */
+    async updateBotLink() {
+        const linkEl = document.getElementById('telegramBotLink');
+        if (!linkEl) return;
+        try {
+            const resp = await fetch('/api/bot-info');
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.configured && data.botUsername) {
+                    linkEl.href = `https://t.me/${data.botUsername}?start=${data.companyId}`;
+                    linkEl.style.display = 'inline-flex';
+                } else {
+                    linkEl.style.display = 'none';
+                }
+            }
+        } catch (e) {
+            console.error('Error fetching bot info:', e);
+            linkEl.style.display = 'none';
         }
     },
 

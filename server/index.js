@@ -300,6 +300,31 @@ app.get('/api/me', (req, res) => {
 });
 
 /**
+ * GET /api/bot-info - Інформація про Telegram-бота компанії
+ */
+app.get('/api/bot-info', (req, res) => {
+    const Auth = require('./auth');
+    const BotManager = require('./botManager');
+    
+    const companyId = req.companyId;
+    if (!companyId) return res.status(401).json({ error: 'Unauthorized' });
+    
+    const company = Auth.getCompany(companyId);
+    if (!company || !company.botToken) {
+        return res.json({ configured: false });
+    }
+    
+    // Шукаємо запущений бот з цим токеном
+    const activeBot = Array.from(BotManager.bots.values()).find(b => b.token === company.botToken);
+    
+    res.json({
+        configured: true,
+        botUsername: activeBot ? activeBot.username || null : null,
+        companyId: companyId
+    });
+});
+
+/**
  * GET /api/cars - Отримання списку авто
  */
 app.get('/api/cars', (req, res) => {
