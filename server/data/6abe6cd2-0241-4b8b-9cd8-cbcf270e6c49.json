@@ -1,0 +1,49 @@
+{
+  "cars": [
+    {
+      "brand": "Toyota",
+      "model": "Camry",
+      "year": "2020",
+      "mileage": 50000,
+      "plate": "AA1234BB",
+      "color": "",
+      "fuelNorm": 0,
+      "id": "mq3kmcjinjj6d5mvjin",
+      "createdAt": "2026-06-07T09:19:44.379Z",
+      "updatedAt": "2026-06-07T09:19:44.379Z"
+    },
+    {
+      "brand": "Honda",
+      "model": "Civic",
+      "year": "2018",
+      "mileage": 80000,
+      "plate": "",
+      "color": "",
+      "fuelNorm": 0,
+      "id": "mq7uoydzjecv9s8pfy",
+      "createdAt": "2026-06-10T09:12:46.867Z",
+      "updatedAt": "2026-06-10T09:12:46.867Z"
+    }
+  ],
+  "fuel": [],
+  "expenses": [],
+  "reminders": [
+    {
+      "carId": "mq7uoydzjecv9s8pfy",
+      "type": "oil",
+      "date": "2026-09-01",
+      "mileage": 60000,
+      "note": "Diagnostic test",
+      "completed": false,
+      "id": "mq7vndha33y1na9c42z",
+      "createdAt": "2026-06-10T09:39:32.726Z",
+      "updatedAt": "2026-06-10T09:39:32.726Z"
+    }
+  ],
+  "coupons": [],
+  "maintenance": [],
+  "documents": [],
+  "authorizedDrivers": [],
+  "settings": {},
+  "updatedAt": "2026-06-10T09:43:13.175Z"
+}

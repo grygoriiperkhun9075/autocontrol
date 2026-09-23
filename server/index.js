@@ -78,11 +78,11 @@ async function startApp() {
                 }
             }
         } else {
-            // Якщо компанія є, але без токена — прив'язати
-            const companyWithoutBot = companies.find(c => !c.botToken);
-            if (companyWithoutBot) {
-                Auth.updateBotToken(companyWithoutBot.id, process.env.BOT_TOKEN);
-                console.log(`🔑 BOT_TOKEN прив'язано до "${companyWithoutBot.name}"`);
+            // Прив'язуємо BOT_TOKEN тільки якщо жодна компанія ще не має цього токена
+            const hasBotToken = companies.some(c => c.botToken === process.env.BOT_TOKEN);
+            if (!hasBotToken && companies.length > 0) {
+                Auth.updateBotToken(companies[0].id, process.env.BOT_TOKEN);
+                console.log(`🔑 BOT_TOKEN прив'язано до першої компанії "${companies[0].name}"`);
             }
         }
     }
@@ -170,11 +170,7 @@ app.post('/api/auth/register', (req, res) => {
         return res.status(400).json({ success: false, error: 'Пароль має бути мінімум 4 символи' });
     }
 
-    // Авто-присвоєння BOT_TOKEN з env якщо не вказано
-    if (!botToken && process.env.BOT_TOKEN) {
-        botToken = process.env.BOT_TOKEN;
-        console.log('🔑 Авто-присвоєно BOT_TOKEN з env');
-    }
+    // botToken не копіюємо з env для нових компаній (щоб уникнути дублювання токена)
 
     const result = Auth.register({ companyName, login, password, botToken });
 

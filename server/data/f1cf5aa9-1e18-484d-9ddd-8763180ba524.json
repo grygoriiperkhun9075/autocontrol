@@ -1,0 +1,37 @@
+{
+  "cars": [
+    {
+      "brand": "Test Car",
+      "model": "BC 1234 CD",
+      "year": null,
+      "mileage": 0,
+      "plate": "",
+      "color": "",
+      "fuelNorm": 0,
+      "id": "mq7vy4dnwy4wjc5nbh",
+      "createdAt": "2026-06-10T09:47:54.151Z",
+      "updatedAt": "2026-06-10T09:47:54.151Z"
+    }
+  ],
+  "fuel": [],
+  "expenses": [],
+  "reminders": [
+    {
+      "carId": "mq7vy4dnwy4wjc5nbh",
+      "type": "maintenance",
+      "date": "2026-09-01",
+      "mileage": 100000,
+      "note": "E2E Merge Test Reminder",
+      "completed": false,
+      "id": "mq7wgunh6ttf0aydvrh",
+      "createdAt": "2026-06-10T10:02:27.998Z",
+      "updatedAt": "2026-06-10T10:02:27.998Z"
+    }
+  ],
+  "coupons": [],
+  "maintenance": [],
+  "documents": [],
+  "authorizedDrivers": [],
+  "settings": {},
+  "updatedAt": "2026-06-10T10:02:28.044Z"
+}

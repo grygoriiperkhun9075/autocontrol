@@ -1,0 +1,37 @@
+{
+  "cars": [
+    {
+      "brand": "Ford",
+      "model": "Focus",
+      "year": null,
+      "mileage": 100000,
+      "plate": "AA1234BB",
+      "color": "",
+      "fuelNorm": 0,
+      "id": "mq3jptbn493g4fl1p7l",
+      "createdAt": "2026-06-07T08:54:26.480Z",
+      "updatedAt": "2026-06-07T08:54:26.480Z"
+    }
+  ],
+  "fuel": [],
+  "expenses": [],
+  "reminders": [
+    {
+      "carId": "mq3jptbn493g4fl1p7l",
+      "type": "maintenance",
+      "date": "2026-06-15",
+      "mileage": 110000,
+      "note": "Test Reminder V3",
+      "completed": false,
+      "id": "mq3jxezqgnr0k320m4",
+      "createdAt": "2026-06-07T09:00:21.140Z",
+      "updatedAt": "2026-06-07T09:00:21.140Z"
+    }
+  ],
+  "coupons": [],
+  "maintenance": [],
+  "documents": [],
+  "authorizedDrivers": [],
+  "settings": {},
+  "updatedAt": "2026-09-23T18:05:04.589Z"
+}
