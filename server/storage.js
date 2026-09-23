@@ -179,7 +179,7 @@ class CompanyStorage {
 
     addDriver(chatId, name) {
         if (!this.data.authorizedDrivers) this.data.authorizedDrivers = [];
-        const existing = this.data.authorizedDrivers.find(d => d.chatId === chatId);
+        const existing = this.data.authorizedDrivers.find(d => String(d.chatId) === String(chatId));
         if (existing) return { success: false, reason: 'already_exists' };
         const driver = { chatId, name: name || 'Водій', addedAt: new Date().toISOString() };
         this.data.authorizedDrivers.push(driver);
@@ -189,7 +189,7 @@ class CompanyStorage {
 
     removeDriver(chatId) {
         if (!this.data.authorizedDrivers) return { success: false };
-        const idx = this.data.authorizedDrivers.findIndex(d => d.chatId === chatId);
+        const idx = this.data.authorizedDrivers.findIndex(d => String(d.chatId) === String(chatId));
         if (idx === -1) return { success: false, reason: 'not_found' };
         const removed = this.data.authorizedDrivers.splice(idx, 1)[0];
         this.save();
@@ -202,7 +202,7 @@ class CompanyStorage {
 
     isDriverAuthorized(chatId) {
         if (!this.data.authorizedDrivers || this.data.authorizedDrivers.length === 0) return true; // Якщо список порожній — дозволяємо всім
-        return this.data.authorizedDrivers.some(d => d.chatId === chatId);
+        return this.data.authorizedDrivers.some(d => String(d.chatId) === String(chatId));
     }
 
     /**
