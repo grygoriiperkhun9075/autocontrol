@@ -54,6 +54,7 @@ class AutoControlBot {
                 if (msg) {
                     if (msg.chat) chatId = msg.chat.id;
                     else if (msg.message && msg.message.chat) chatId = msg.message.chat.id;
+                    else if (msg.from) chatId = msg.from.id;
                 }
                 if (!chatId) return callback.call(this, ...args);
 
@@ -343,32 +344,47 @@ AA 1234 BB
         });
 
         // Обробка натискань на кнопки (спосіб оплати / талони / вибір компанії)
-        this.bot.on('callback_query', (query) => {
-            const chatId = query.message.chat.id;
+        this.bot.on('callback_query', async (query) => {
+            if (!query) return;
+
+            const chatId = query.message?.chat?.id || query.from?.id;
+            const userId = query.from?.id || chatId;
+            if (!chatId) return;
+
+            console.log(`🔘 [Callback] Від ${userId} (Chat: ${chatId}): ${query.data}`);
+
+            // Миттєва відповідь Telegram для зняття анімації з кнопки
+            if (query.id) {
+                this.bot.answerCallbackQuery(query.id).catch(() => {});
+            }
+
             if (query.data.startsWith('select_co_')) {
                 const companyId = query.data.replace('select_co_', '');
                 this.saveSession(chatId, companyId);
-                
+
                 const Auth = require('./auth');
                 const company = Auth.getCompany(companyId);
                 const companyName = company ? company.name : 'невідому компанію';
-                
-                this.bot.answerCallbackQuery(query.id);
-                this.bot.editMessageText(`✅ *Активовано компанію:* ${companyName}\n\nТепер ви працюєте з цим кабінетом.`, {
-                    chat_id: chatId,
-                    message_id: query.message.message_id,
-                    parse_mode: 'Markdown'
-                });
+
+                if (query.message?.message_id) {
+                    this.bot.editMessageText(`✅ *Активовано компанію:* ${companyName}
+
+Тепер ви працюєте з цим кабінетом.`, {
+                        chat_id: chatId,
+                        message_id: query.message.message_id,
+                        parse_mode: 'Markdown'
+                    }).catch(() => {});
+                }
             } else if (query.data.startsWith('coupon_')) {
-                const userId = query.from ? query.from.id : chatId;
-                // Перевіряємо авторизацію за ID користувача та за ID чату
+                // Перевіряємо авторизацію водія
                 if (!this.storage.isDriverAuthorized(userId) && !this.storage.isDriverAuthorized(chatId)) {
-                    this.bot.answerCallbackQuery(query.id, { text: '🚫 У вас немає доступу до талонів', show_alert: true }).catch(() => {});
+                    this.bot.sendMessage(chatId, `🚫 *У вас немає доступу до талонів*
+
+Ваш ID: \`${userId}\``, { parse_mode: 'Markdown' }).catch(() => {});
                     return;
                 }
                 const liters = parseInt(query.data.replace('coupon_', ''), 10);
-                this.bot.answerCallbackQuery(query.id, { text: `⏳ Готую талон на ${liters} л...` }).catch(() => {});
-                this.generateAndSendCouponPDF(chatId, liters);
+                await this.generateAndSendCouponPDF(chatId, liters);
             } else {
                 this.handlePaymentCallback(query);
             }
