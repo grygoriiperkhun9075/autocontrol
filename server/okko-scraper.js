@@ -301,7 +301,9 @@ class OkkoScraper {
      * Номінал: 40000 → 40 літрів
      */
     _parseNominal(c) {
-        const val = c.nominal || c.liters || c.volume || c.amount || c.balance || 0;
+        const raw = c.nominal || c.liters || c.volume || c.amount || c.balance || 0;
+        const val = typeof raw === 'string' ? parseFloat(raw.replace(',', '.')) : Number(raw);
+        if (isNaN(val)) return 0;
         return val > 1000 ? Math.round(val / 1000) : val;
     }
 
@@ -309,11 +311,12 @@ class OkkoScraper {
      * Знайти талон за номіналом (пропускає вже видані сьогодні)
      */
     findCouponByNominal(liters) {
+        const reqLiters = Number(liters);
         const todayKey = new Date().toISOString().split('T')[0];
         const issuedToday = this.issuedCoupons.get(todayKey) || new Set();
 
         return this.cachedCoupons.find(c =>
-            c.nominal === liters && !issuedToday.has(c.number)
+            Number(c.nominal) === reqLiters && !issuedToday.has(c.number)
         );
     }
 
@@ -340,7 +343,8 @@ class OkkoScraper {
         const nominals = {};
         for (const c of this.cachedCoupons) {
             if (!issuedToday.has(c.number)) {
-                nominals[c.nominal] = (nominals[c.nominal] || 0) + 1;
+                const nom = Number(c.nominal);
+                nominals[nom] = (nominals[nom] || 0) + 1;
             }
         }
         return nominals;

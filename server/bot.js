@@ -716,7 +716,7 @@ AA 1234 BB
             this.bot.sendMessage(chatId, '⏳ Отримую талони з OKKO...');
 
             try {
-                const coupons = await this.okko.fetchActiveCoupons();
+                const coupons = await this.okko.fetchActiveCoupons(true);
 
                 if (!coupons || coupons.length === 0) {
                     this.bot.sendMessage(chatId, '❌ *Немає активних талонів в OKKO*\n\nПеревірте особистий кабінет ssp-online.okko.ua', { parse_mode: 'Markdown' });
@@ -777,11 +777,37 @@ AA 1234 BB
 
         try {
             if (this.okko && this.okko.isConfigured()) {
-                await this.okko.fetchActiveCoupons();
+                await this.okko.fetchActiveCoupons(true);
 
                 const coupon = this.okko.findCouponByNominal(liters);
                 if (!coupon) {
-                    this.bot.sendMessage(chatId, `❌ *Немає талону на ${liters} л!*\n\nДоступні номінали: ${Object.keys(this.okko.getAvailableNominals()).join(', ')} л`, { parse_mode: 'Markdown' });
+                    const nominals = this.okko.getAvailableNominals();
+                    const availableNominalsList = Object.keys(nominals);
+
+                    if (availableNominalsList.length > 0) {
+                        const keyboard = [];
+                        let row = [];
+                        for (const [nom, count] of Object.entries(nominals).sort((a, b) => a[0] - b[0])) {
+                            row.push({ text: `⛽ ${nom} л (${count} шт)`, callback_data: `coupon_${nom}` });
+                            if (row.length === 2) {
+                                keyboard.push(row);
+                                row = [];
+                            }
+                        }
+                        if (row.length > 0) keyboard.push(row);
+
+                        let availableText = Object.entries(nominals)
+                            .sort((a, b) => a[0] - b[0])
+                            .map(([nom, count]) => `• ${nom} л — *${count} шт*`)
+                            .join('\n');
+
+                        this.bot.sendMessage(chatId, `❌ *Немає вільних талонів на ${liters} л!*\n\n📋 *Доступні номінали на даний момент:*\n${availableText}\n\nОберіть доступний номінал нижче:`, {
+                            parse_mode: 'Markdown',
+                            reply_markup: { inline_keyboard: keyboard }
+                        });
+                    } else {
+                        this.bot.sendMessage(chatId, `❌ *Наразі немає активних талонів в OKKO*\n\nПеревірте особистий кабінет ssp-online.okko.ua`, { parse_mode: 'Markdown' });
+                    }
                     return;
                 }
 
