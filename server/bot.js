@@ -360,14 +360,15 @@ AA 1234 BB
                     parse_mode: 'Markdown'
                 });
             } else if (query.data.startsWith('coupon_')) {
-                // Перевіряємо авторизацію при натисканні кнопки
-                if (!this.storage.isDriverAuthorized(chatId)) {
+                const userId = query.from ? query.from.id : chatId;
+                // Перевіряємо авторизацію за ID користувача та за ID чату
+                if (!this.storage.isDriverAuthorized(userId) && !this.storage.isDriverAuthorized(chatId)) {
                     this.bot.answerCallbackQuery(query.id, { text: '🚫 У вас немає доступу до талонів', show_alert: true }).catch(() => {});
                     return;
                 }
                 const liters = parseInt(query.data.replace('coupon_', ''), 10);
                 this.bot.answerCallbackQuery(query.id, { text: `⏳ Готую талон на ${liters} л...` }).catch(() => {});
-                this.generateAndSendCouponPDF(chatId, liters, query.message?.message_id);
+                this.generateAndSendCouponPDF(chatId, liters);
             } else {
                 this.handlePaymentCallback(query);
             }
