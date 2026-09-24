@@ -321,9 +321,13 @@ AA 1234 BB
             // Ігноруємо команди
             if (msg.text && msg.text.startsWith('/')) return;
 
-            // Перевірка на талони (природна мова)
+            // 1. Запит на видачу PDF-талону ("20", "20л", "50", "50л", "талон 20")
+            if (msg.text && this.tryParseCouponRequest(msg)) return;
+
+            // 2. Купівля/додавання талонів ("талони 200 52.50")
             if (msg.text && this.tryParseCoupon(msg)) return;
 
+            // 3. Заправка автомобіля
             this.handleFuelMessage(msg);
         });
 
@@ -741,7 +745,7 @@ AA 1234 BB
                 for (const [nom, count] of Object.entries(nominals).sort((a, b) => a[0] - b[0])) {
                     text += `• ${nom} л — *${count} шт*\n`;
                 }
-                text += `\nОберіть номінал:`;
+                text += `\n👇 *Оберіть номінал кнопкою нижче* або просто напишіть у чат число (наприклад: *20* або *50*):`;
 
                 this.bot.sendMessage(chatId, text, {
                     parse_mode: 'Markdown',
@@ -1086,6 +1090,33 @@ AA 1234 BB
      * Підтримує: "талони 200 52.50", "купівля талонів 200л по 52.50",
      * "талон 100", "Талони: 200 літрів по 52.50 грн" тощо
      */
+    /**
+     * Перевіряє чи текстове повідомлення є запитом на отримання PDF-талону (напр: "20", "20л", "50", "50л")
+     */
+    tryParseCouponRequest(msg) {
+        if (!this.bot || !msg.text) return false;
+        const text = msg.text.trim().toLowerCase();
+
+        // Ігноруємо, якщо в тексті є номер авто (напр: AA 1234 BB 55500 45л)
+        if (/[a-zа-я]{2}\s*\d{4}\s*[a-zа-я]{2}/i.test(text)) {
+            return false;
+        }
+
+        // Парсимо варіанти: "20", "20л", "20 л", "50", "50л", "талон 20", "хочу 50"
+        const match = text.match(/^(?:талон[иі]?\s*|хочу\s*|дай\s*)?(\d+)\s*(?:л|літрів|літри)?$/i);
+        if (match) {
+            const liters = parseInt(match[1], 10);
+            const nominals = (this.okko && this.okko.isConfigured()) ? this.okko.getAvailableNominals() : {};
+
+            if (nominals[liters] || liters === 20 || liters === 50) {
+                if (!this.checkDriverAccess(msg)) return true;
+                this.generateAndSendCouponPDF(msg.chat.id, liters);
+                return true;
+            }
+        }
+        return false;
+    }
+
     tryParseCoupon(msg) {
         if (!this.bot) return false;
         const text = msg.text.toLowerCase().trim();
