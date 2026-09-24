@@ -362,12 +362,12 @@ AA 1234 BB
             } else if (query.data.startsWith('coupon_')) {
                 // Перевіряємо авторизацію при натисканні кнопки
                 if (!this.storage.isDriverAuthorized(chatId)) {
-                    this.bot.answerCallbackQuery(query.id, { text: '🚫 У вас немає доступу до талонів', show_alert: true });
+                    this.bot.answerCallbackQuery(query.id, { text: '🚫 У вас немає доступу до талонів', show_alert: true }).catch(() => {});
                     return;
                 }
-                const liters = parseInt(query.data.replace('coupon_', ''));
-                this.bot.answerCallbackQuery(query.id);
-                this.generateAndSendCouponPDF(chatId, liters, query.message.message_id);
+                const liters = parseInt(query.data.replace('coupon_', ''), 10);
+                this.bot.answerCallbackQuery(query.id, { text: `⏳ Готую талон на ${liters} л...` }).catch(() => {});
+                this.generateAndSendCouponPDF(chatId, liters, query.message?.message_id);
             } else {
                 this.handlePaymentCallback(query);
             }
@@ -818,28 +818,15 @@ AA 1234 BB
                 const formattedNum = CouponPDF._formatNumber ?
                     CouponPDF._formatNumber(coupon.number) : coupon.number;
 
-                // === СПРОБА 1: Оригінальний PDF з OKKO SSP ===
-                let pdfBuffer = null;
-                try {
-                    pdfBuffer = await this.okko.fetchCouponPDF(coupon);
-                    if (pdfBuffer) {
-                        console.log(`✅ Відправляю оригінальний OKKO PDF (${pdfBuffer.length} bytes)`);
-                    }
-                } catch (err) {
-                    console.error('⚠️ Не вдалося отримати оригінальний PDF:', err.message);
-                }
-
-                // === СПРОБА 2: Генеруємо локально (fallback) ===
-                if (!pdfBuffer) {
-                    console.log('📄 Fallback: генерую PDF локально...');
-                    pdfBuffer = await CouponPDF.generate({
-                        liters: coupon.nominal,
-                        couponNumber: coupon.number,
-                        qrData: coupon.qr || coupon.number,
-                        validUntil: coupon.validTo,
-                        fuelType: coupon.fuelType || 'Дизельне паливо'
-                    });
-                }
+                // Генеруємо високоякісний PDF з QR-кодом OKKO
+                console.log(`📄 Генерую PDF-талон ${coupon.nominal} л (${coupon.number})...`);
+                const pdfBuffer = await CouponPDF.generate({
+                    liters: coupon.nominal,
+                    couponNumber: coupon.number,
+                    qrData: coupon.qr || coupon.number,
+                    validUntil: coupon.validTo,
+                    fuelType: coupon.fuelType || 'Дизельне паливо'
+                });
 
                 // Відправляємо PDF
                 await this.bot.sendDocument(chatId, pdfBuffer, {
@@ -853,10 +840,11 @@ AA 1234 BB
                 // Позначаємо талон як виданий (щоб не видати повторно сьогодні)
                 this.okko.markAsIssued(coupon.number);
 
-                // Перевіряємо залишок талонів і повідомляємо адміна
-                this.checkAndNotifyLowStock();
-                // Перевіряємо баланс контракту карток
-                this.checkAndNotifyCardBalance();
+                // Асинхронні фонові перевірки (не блокують видачу талону водієві)
+                setTimeout(() => {
+                    this.checkAndNotifyLowStock();
+                    this.checkAndNotifyCardBalance();
+                }, 100);
 
                 if (messageId) {
                     this.bot.editMessageText(`✅ *Талон на ${coupon.nominal} л відправлено!*`, {
