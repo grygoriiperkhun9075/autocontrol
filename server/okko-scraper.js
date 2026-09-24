@@ -315,9 +315,14 @@ class OkkoScraper {
         const todayKey = new Date().toISOString().split('T')[0];
         const issuedToday = this.issuedCoupons.get(todayKey) || new Set();
 
-        return this.cachedCoupons.find(c =>
+        // 1. Спочатку шукаємо талон, який ще не видавався сьогодні
+        const unissued = this.cachedCoupons.find(c =>
             Number(c.nominal) === reqLiters && !issuedToday.has(c.number)
         );
+        if (unissued) return unissued;
+
+        // 2. Фолбек: якщо всі були позначені як видані, але вони активні в OKKO — беремо активний
+        return this.cachedCoupons.find(c => Number(c.nominal) === reqLiters);
     }
 
     /**
@@ -338,12 +343,10 @@ class OkkoScraper {
      * Доступні номінали з кількістю (виключаючи вже видані сьогодні)
      */
     getAvailableNominals() {
-        const todayKey = new Date().toISOString().split('T')[0];
-        const issuedToday = this.issuedCoupons.get(todayKey) || new Set();
         const nominals = {};
         for (const c of this.cachedCoupons) {
-            if (!issuedToday.has(c.number)) {
-                const nom = Number(c.nominal);
+            const nom = Number(c.nominal);
+            if (nom > 0) {
                 nominals[nom] = (nominals[nom] || 0) + 1;
             }
         }

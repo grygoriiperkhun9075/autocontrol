@@ -60,7 +60,8 @@ class AutoControlBot {
 
                 if (event === 'callback_query') {
                     const context = Object.create(this);
-                    context.storage = this.getStorageForChat(chatId);
+                    const userOrChatId = msg.from?.id || chatId;
+                    context.storage = this.getStorageForChat(userOrChatId) || this.getStorageForChat(chatId);
                     return callback.call(context, ...args);
                 }
 
@@ -384,7 +385,7 @@ AA 1234 BB
                     return;
                 }
                 const liters = parseInt(query.data.replace('coupon_', ''), 10);
-                await this.generateAndSendCouponPDF(chatId, liters);
+                await this.generateAndSendCouponPDF(chatId, liters, query.message?.message_id);
             } else {
                 this.handlePaymentCallback(query);
             }
@@ -502,7 +503,9 @@ AA 1234 BB
         const data = query.data;
 
         // Відповідаємо на callback щоб прибрати "годинник"
-        this.bot.answerCallbackQuery(query.id);
+        if (query.id) {
+            this.bot.answerCallbackQuery(query.id).catch(() => {});
+        }
 
         const pending = this.pendingFuel.get(chatId);
         if (!pending) {
@@ -712,8 +715,9 @@ AA 1234 BB
      * Перевірка доступу водія до талонів
      */
     checkDriverAccess(msg) {
+        const userId = msg.from?.id || msg.chat.id;
         const chatId = msg.chat.id;
-        if (this.storage.isDriverAuthorized(chatId)) return true;
+        if (this.storage.isDriverAuthorized(userId) || this.storage.isDriverAuthorized(chatId)) return true;
 
         const driverName = msg.from?.first_name || 'Водій';
         this.bot.sendMessage(chatId,
@@ -798,9 +802,12 @@ AA 1234 BB
 
         try {
             if (this.okko && this.okko.isConfigured()) {
-                await this.okko.fetchActiveCoupons(true);
+                let coupon = this.okko.findCouponByNominal(liters);
 
-                const coupon = this.okko.findCouponByNominal(liters);
+                if (!coupon) {
+                    await this.okko.fetchActiveCoupons(true);
+                    coupon = this.okko.findCouponByNominal(liters);
+                }
                 if (!coupon) {
                     const nominals = this.okko.getAvailableNominals();
                     const availableNominalsList = Object.keys(nominals);
@@ -875,7 +882,15 @@ AA 1234 BB
             }
         } catch (error) {
             console.error('❌ Помилка генерації талону:', error);
-            this.bot.sendMessage(chatId, '❌ Помилка генерації талону. Спробуйте ще раз.');
+            if (messageId) {
+                this.bot.editMessageText('❌ *Помилка генерації талону.* Спробуйте ще раз.', {
+                    chat_id: chatId,
+                    message_id: messageId,
+                    parse_mode: 'Markdown'
+                }).catch(() => {});
+            } else {
+                this.bot.sendMessage(chatId, '❌ Помилка генерації талону. Спробуйте ще раз.');
+            }
         }
     }
 
