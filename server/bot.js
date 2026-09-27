@@ -24,7 +24,7 @@ class AutoControlBot {
             polling: {
                 interval: 300,
                 autoStart: true,
-                params: { timeout: 10 }
+                params: { timeout: 10, allowed_updates: ['message', 'edited_message', 'callback_query'] }
             }
         });
 
@@ -829,10 +829,20 @@ AA 1234 BB
                             .map(([nom, count]) => `• ${nom} л — *${count} шт*`)
                             .join('\n');
 
-                        this.bot.sendMessage(chatId, `❌ *Немає вільних талонів на ${liters} л!*\n\n📋 *Доступні номінали на даний момент:*\n${availableText}\n\nОберіть доступний номінал нижче:`, {
-                            parse_mode: 'Markdown',
-                            reply_markup: { inline_keyboard: keyboard }
-                        });
+                        const noCouponMsg = `❌ *Немає вільних талонів на ${liters} л!*\n\n📋 *Доступні номінали на даний момент:*\n${availableText}\n\nОберіть доступний номінал нижче:`;
+                        if (messageId) {
+                            this.bot.editMessageText(noCouponMsg, {
+                                chat_id: chatId,
+                                message_id: messageId,
+                                parse_mode: "Markdown",
+                                reply_markup: { inline_keyboard: keyboard }
+                            }).catch(() => {});
+                        } else {
+                            this.bot.sendMessage(chatId, noCouponMsg, {
+                                parse_mode: "Markdown",
+                                reply_markup: { inline_keyboard: keyboard }
+                            });
+                        }
                     } else {
                         this.bot.sendMessage(chatId, `❌ *Наразі немає активних талонів в OKKO*\n\nПеревірте особистий кабінет ssp-online.okko.ua`, { parse_mode: 'Markdown' });
                     }
