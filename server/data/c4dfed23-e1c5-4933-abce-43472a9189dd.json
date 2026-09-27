@@ -3242,7 +3242,8 @@
     }
   ],
   "settings": {
-    "fuelCardPriority": true
+    "fuelCardPriority": true,
+    "disableMileageCheck": true
   },
   "updatedAt": "2026-09-27T05:29:03.669Z"
 }

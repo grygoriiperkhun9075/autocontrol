@@ -234,9 +234,76 @@ const Fuel = {
     },
 
     /**
+     * Ініціалізація перемикача контролю пробігу
+     */
+    initMileageToggle() {
+        const btn = document.getElementById('toggleMileageCheckBtn');
+        if (!btn || this._mileageToggleInited) return;
+        this._mileageToggleInited = true;
+
+        this.loadMileageSetting().then(disabled => {
+            this.updateMileageUI(disabled);
+        });
+
+        btn.addEventListener('click', async () => {
+            const currentDisabled = btn.dataset.disabled === 'true';
+            const newDisabled = !currentDisabled;
+            this.updateMileageUI(newDisabled);
+            await this.saveMileageSetting(newDisabled);
+        });
+    },
+
+    updateMileageUI(disabled) {
+        const btn = document.getElementById('toggleMileageCheckBtn');
+        const icon = document.getElementById('mileageCheckIcon');
+        const text = document.getElementById('mileageCheckStatusText');
+        if (!btn || !icon || !text) return;
+
+        btn.dataset.disabled = disabled ? 'true' : 'false';
+        if (disabled) {
+            icon.textContent = '🔓';
+            text.textContent = 'Контроль пробігу: Вимкнено';
+            btn.className = 'btn btn-secondary';
+            btn.style.borderColor = '#f59e0b';
+            btn.style.color = '#f59e0b';
+        } else {
+            icon.textContent = '🔒';
+            text.textContent = 'Контроль пробігу: Ввімкнено';
+            btn.className = 'btn btn-secondary';
+            btn.style.borderColor = '#10b981';
+            btn.style.color = '#10b981';
+        }
+    },
+
+    async loadMileageSetting() {
+        try {
+            const resp = await fetch('/api/settings');
+            if (!resp.ok) return true;
+            const settings = await resp.json();
+            return settings.disableMileageCheck === true;
+        } catch (e) {
+            return true;
+        }
+    },
+
+    async saveMileageSetting(disabled) {
+        try {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ disableMileageCheck: disabled })
+            });
+            console.log(`✅ disableMileageCheck = ${disabled}`);
+        } catch (e) {
+            console.error('⚠️ Error saving mileage check setting:', e);
+        }
+    },
+
+    /**
      * Рендеринг таблиці заправок
      */
     renderTable(carId = null) {
+        this.initMileageToggle();
         const records = this.getAll(carId);
         const tbody = document.getElementById('fuelTableBody');
 

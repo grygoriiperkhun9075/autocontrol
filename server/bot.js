@@ -435,10 +435,13 @@ AA 1234 BB
         }
 
         // ========== ВАЛІДАЦІЯ ПРОБІГУ ==========
+        const settings = this.storage.getSettings ? this.storage.getSettings() : {};
+        const disableMileageCheck = settings.disableMileageCheck === true;
+
         const lastMileage = parseInt(car.mileage) || 0;
         const newMileage = parseInt(parsed.mileage) || 0;
 
-        if (newMileage > 0 && lastMileage > 0) {
+        if (!disableMileageCheck && newMileage > 0 && lastMileage > 0) {
             // ❌ Пробіг менший за попередній — завжди блокуємо
             if (newMileage < lastMileage) {
                 this.bot.sendMessage(chatId, `❌ *Пробіг ${newMileage.toLocaleString()} км менший за попередній ${lastMileage.toLocaleString()} км!*\n\nПеревірте правильність введеного пробігу.\n📏 Останній відомий пробіг: *${lastMileage.toLocaleString()} км*`, { parse_mode: 'Markdown' });

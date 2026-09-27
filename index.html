@@ -214,9 +214,15 @@
             <section class="content-section" id="section-fuel">
                 <div class="section-header">
                     <h2>Заправки</h2>
-                    <button class="btn btn-primary" id="addFuelBtn">
-                        <span>+</span> Додати заправку
-                    </button>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" id="toggleMileageCheckBtn" title="Перемикач контролю пробігу ботом" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                            <span id="mileageCheckIcon">🔓</span>
+                            <span id="mileageCheckStatusText">Контроль пробігу: Вимкнено</span>
+                        </button>
+                        <button class="btn btn-primary" id="addFuelBtn">
+                            <span>+</span> Додати заправку
+                        </button>
+                    </div>
                 </div>
                 <div class="fuel-stats" id="fuelStats">
                     <div class="fuel-stat">
