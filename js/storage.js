@@ -391,13 +391,19 @@ const Storage = {
 
             const result = await response.json();
             if (result.success && result.data) {
-                this.importData(result.data);
+                const collections = ['cars', 'fuel', 'expenses', 'reminders', 'coupons', 'maintenance', 'documents'];
+                collections.forEach(type => {
+                    const key = this.KEYS[type.toUpperCase()];
+                    if (result.data[type] && key) {
+                        this.set(key, result.data[type]);
+                    }
+                });
                 if (result.timestamp) {
                     this.updateServerTimeOffset(result.timestamp);
                 }
                 localStorage.setItem('autocontrol_last_synced_at', result.timestamp || this.getNowISO());
                 this.incrementLocalVersion();
-                console.log('🔄 Повна синхронізація виконана');
+                console.log('🔄 Повна примусова синхронізація виконана');
                 return true;
             }
         } catch (error) {
