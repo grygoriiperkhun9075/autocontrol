@@ -14,7 +14,7 @@ const App = {
      */
     async init() {
         // Синхронізація з сервером
-        await this.syncFromServer();
+        await Storage.forceSync();
 
         this.initNavigation();
         this.initModals();
@@ -42,7 +42,7 @@ const App = {
      * Синхронізація з сервером
      */
     async syncFromServer() {
-        const synced = await Storage.syncFromServer();
+        const synced = await Storage.forceSync();
         if (synced) {
             this.render();
         }

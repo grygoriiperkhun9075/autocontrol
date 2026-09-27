@@ -316,7 +316,7 @@ const Fuel = {
         const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         tbody.innerHTML = sorted.map(record => {
-            const payLabel = record.paymentMethod === 'cash' ? '💵 Готівка' : '🎫 Талони';
+            let payLabel = '🎫 Талони'; if (record.paymentMethod === 'cash') payLabel = '💵 Готівка'; else if (record.paymentMethod === 'card') payLabel = '💳 Картка';
             const driverLabel = record.driverName || '--';
             return `
             <tr data-fuel-id="${record.id}">
