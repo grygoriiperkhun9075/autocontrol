@@ -825,6 +825,20 @@ app.get('/', (req, res) => {
 
 // ========== SETTINGS ==========
 
+
+app.get('/api/security-logs', (req, res) => {
+    try {
+        const file = path.join(__dirname, 'data', 'security_logs.json');
+        if (fs.existsSync(file)) {
+            const logs = JSON.parse(fs.readFileSync(file, 'utf-8'));
+            return res.json({ success: true, logs });
+        }
+        res.json({ success: true, logs: [] });
+    } catch (e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
 app.get('/api/settings', (req, res) => {
     res.json(req.storage.getSettings());
 });

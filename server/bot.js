@@ -323,6 +323,9 @@ AA 1234 BB
             // Ігноруємо команди
             if (msg.text && msg.text.startsWith('/')) return;
 
+            // 🛡️ ПЕРЕВІРКА АВТОРИЗАЦІЇ ВОДІЯ
+            if (!this.checkDriverAccess(msg)) return;
+
             // 1. Запит на видачу PDF-талону ("20", "20л", "50", "50л", "талон 20")
             if (msg.text && this.tryParseCouponRequest(msg)) return;
 
@@ -335,6 +338,7 @@ AA 1234 BB
 
         // Обробка фото (для майбутнього OCR)
         this.bot.on('photo', (msg) => {
+            if (!this.checkDriverAccess(msg)) return;
             const chatId = msg.chat.id;
             this.bot.sendMessage(chatId, '📷 Фото отримано! Розпізнавання чеків поки що в розробці. Будь ласка, введіть дані вручну.');
 
@@ -717,18 +721,58 @@ AA 1234 BB
     /**
      * Перевірка доступу водія до талонів
      */
-    checkDriverAccess(msg) {
-        const userId = msg.from?.id || msg.chat.id;
-        const chatId = msg.chat.id;
+    logSecurityEvent(event) {
+        try {
+            const file = path.join(__dirname, 'data', 'security_logs.json');
+            let logs = [];
+            if (fs.existsSync(file)) {
+                try { logs = JSON.parse(fs.readFileSync(file, 'utf-8')); } catch (e) {}
+            }
+            logs.unshift(event);
+            if (logs.length > 500) logs = logs.slice(0, 500);
+            fs.writeFileSync(file, JSON.stringify(logs, null, 2), 'utf-8');
+            console.log(`🛡️ [Security] Blocked unauthorized attempt from ${event.driverName} (ID: ${event.userId}): "${event.text}"`);
+        } catch (e) {
+            console.error('⚠️ Error writing security log:', e.message);
+        }
+    }
+
+    checkDriverAccess(msg, quiet = false) {
+        if (!msg) return false;
+        const userId = msg.from?.id || msg.chat?.id;
+        const chatId = msg.chat?.id || userId;
+        if (!userId) return false;
+
         if (this.storage.isDriverAuthorized(userId) || this.storage.isDriverAuthorized(chatId)) return true;
 
-        const driverName = msg.from?.first_name || 'Водій';
-        this.bot.sendMessage(chatId,
-            `🚫 *${driverName}, у вас немає доступу до талонів*\n\n` +
-            `Ваш ID: \`${chatId}\`\n\n` +
-            `Зверніться до адміністратора для авторизації.`,
-            { parse_mode: 'Markdown' }
-        );
+        const driverName = [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(' ') || 'Користувач';
+        const username = msg.from?.username ? `@${msg.from.username}` : '';
+        const text = msg.text || msg.caption || '[активність]';
+
+        this.logSecurityEvent({
+            type: 'UNAUTHORIZED_ACCESS',
+            userId,
+            chatId,
+            driverName,
+            username,
+            text,
+            timestamp: new Date().toISOString()
+        });
+
+        if (!quiet) {
+            this.bot.sendMessage(chatId,
+                `🚫 *${driverName}, доступ обмежено.*
+
+` +
+                `Ваш Telegram ID: \`${userId}\`
+
+` +
+                `Цей бот призначений виключно для авторизованих водіїв компанії.
+` +
+                `Для отримання доступу надайте ваш ID адміністратору.`,
+                { parse_mode: 'Markdown' }
+            ).catch(() => {});
+        }
         return false;
     }
 
