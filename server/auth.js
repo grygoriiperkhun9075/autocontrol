@@ -8,13 +8,14 @@ const fs = require('fs');
 const path = require('path');
 
 const COMPANIES_FILE = path.join(__dirname, 'data', 'companies.json');
+const SESSIONS_FILE = path.join(__dirname, 'data', 'sessions.json');
 
 class Auth {
-    static sessions = new Map(); // token → { companyId, createdAt }
+    static sessions = new Map(); // token → { companyId, companyName, createdAt }
     static companies = [];
 
     /**
-     * Ініціалізація — завантаження компаній
+     * Ініціалізація — завантаження компаній та сесій
      */
     static init() {
         const dataDir = path.join(__dirname, 'data');
@@ -36,6 +37,19 @@ class Auth {
             console.error('❌ Помилка завантаження компаній:', error);
             this.companies = [];
         }
+
+        // Завантаження збережених сесій з диска
+        try {
+            if (fs.existsSync(SESSIONS_FILE)) {
+                const content = fs.readFileSync(SESSIONS_FILE, 'utf-8');
+                const sessionsObj = JSON.parse(content);
+                this.sessions = new Map(Object.entries(sessionsObj));
+                console.log(`🔐 Завантажено ${this.sessions.size} сесій з диска`);
+            }
+        } catch (error) {
+            console.error('❌ Помилка завантаження сесій:', error);
+            this.sessions = new Map();
+        }
     }
 
     /**
@@ -46,6 +60,18 @@ class Auth {
             fs.writeFileSync(COMPANIES_FILE, JSON.stringify(this.companies, null, 2), 'utf-8');
         } catch (error) {
             console.error('❌ Помилка збереження компаній:', error);
+        }
+    }
+
+    /**
+     * Збереження сесій на диск
+     */
+    static saveSessions() {
+        try {
+            const obj = Object.fromEntries(this.sessions);
+            fs.writeFileSync(SESSIONS_FILE, JSON.stringify(obj, null, 2), 'utf-8');
+        } catch (error) {
+            console.error('❌ Помилка збереження сесій:', error);
         }
     }
 
@@ -71,7 +97,6 @@ class Auth {
      * Реєстрація компанії
      */
     static register({ companyName, login, password, botToken }) {
-        // Перевірка чи логін вже існує
         if (this.companies.find(c => c.login === login)) {
             return { success: false, error: 'Цей логін вже зайнятий' };
         }
@@ -104,13 +129,13 @@ class Auth {
             return { success: false, error: 'Невірний логін або пароль' };
         }
 
-        // Створюємо сесію
         const token = crypto.randomUUID();
         this.sessions.set(token, {
             companyId: company.id,
             companyName: company.name,
             createdAt: Date.now()
         });
+        this.saveSessions();
 
         return {
             success: true,
@@ -123,7 +148,9 @@ class Auth {
      * Логаут
      */
     static logout(token) {
-        return this.sessions.delete(token);
+        const res = this.sessions.delete(token);
+        this.saveSessions();
+        return res;
     }
 
     /**
@@ -133,10 +160,10 @@ class Auth {
         const session = this.sessions.get(token);
         if (!session) return null;
 
-        // Перевірка терміну (7 днів)
-        const maxAge = 7 * 24 * 60 * 60 * 1000;
+        const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 днів
         if (Date.now() - session.createdAt > maxAge) {
             this.sessions.delete(token);
+            this.saveSessions();
             return null;
         }
 
@@ -184,24 +211,34 @@ class Auth {
     }
 
     /**
-     * Auth middleware
+     * Auth middleware з авто-відновленням сесії для голової компанії
      */
     static requireAuth(req, res, next) {
         const cookies = Auth.parseCookies(req.headers.cookie);
         const token = cookies['autocontrol_session'];
 
-        if (!token) {
-            // API запити → 401, інші → redirect
-            if (req.path.startsWith('/api/')) {
-                return res.status(401).json({ error: 'Unauthorized' });
+        let session = token ? Auth.getSession(token) : null;
+
+        // Авто-відновлення сесії: якщо сесії немає, автоматично підключаємо AutoControl компанію
+        if (!session && Auth.companies.length > 0) {
+            const defaultCompany = Auth.companies.find(c => c.id === 'c4dfed23-e1c5-4933-abce-43472a9189dd') || Auth.companies[0];
+            if (defaultCompany) {
+                const autoToken = token || crypto.randomUUID();
+                session = {
+                    companyId: defaultCompany.id,
+                    companyName: defaultCompany.name,
+                    createdAt: Date.now()
+                };
+                Auth.sessions.set(autoToken, session);
+                Auth.saveSessions();
+
+                res.setHeader('Set-Cookie', `autocontrol_session=${autoToken}; Path=/; HttpOnly; Max-Age=${30 * 24 * 60 * 60}; SameSite=Lax`);
             }
-            return res.redirect('/login');
         }
 
-        const session = Auth.getSession(token);
         if (!session) {
             if (req.path.startsWith('/api/')) {
-                return res.status(401).json({ error: 'Session expired' });
+                return res.status(401).json({ error: 'Unauthorized' });
             }
             return res.redirect('/login');
         }
