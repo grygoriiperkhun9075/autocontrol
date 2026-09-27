@@ -800,6 +800,7 @@ app.post('/api/inventory/adjust', (req, res) => {
 });
 
 app.get('/api/sync', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json({
         success: true,
         data: req.storage.getAllData(),

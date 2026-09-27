@@ -265,7 +265,7 @@ const Storage = {
 
         this.isSyncingFromServer = true;
         try {
-            const response = await fetch(this.API_URL + '/sync', { signal });
+            const response = await fetch(this.API_URL + '/sync?t=' + Date.now(), { signal, cache: 'no-store' });
             if (response.status === 401) {
                 window.location.href = '/login';
                 return false;
@@ -386,7 +386,7 @@ const Storage = {
      */
     async forceSync() {
         try {
-            const response = await fetch(this.API_URL + '/sync');
+            const response = await fetch(this.API_URL + '/sync?t=' + Date.now(), { cache: 'no-store' });
             if (!response.ok) throw new Error('Server error');
 
             const result = await response.json();
