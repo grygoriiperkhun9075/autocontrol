@@ -737,7 +737,7 @@ AA 1234 BB
         }
     }
 
-    checkDriverAccess(msg, quiet = false) {
+    checkDriverAccess(msg, quiet = true) {
         if (!msg) return false;
         const userId = msg.from?.id || msg.chat?.id;
         const chatId = msg.chat?.id || userId;
